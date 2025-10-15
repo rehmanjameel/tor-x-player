@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/videosFragment">
+
+    <fragment
+        android:id="@+id/videosFragment"
+        android:name="com.torx.torxplayer.fragments.VideosFragment"
+        android:label="fragment_videos"
+        tools:layout="@layout/fragment_videos" />
+    <fragment
+        android:id="@+id/audiosFragment"
+        android:name="com.torx.torxplayer.fragments.AudiosFragment"
+        android:label="fragment_audios"
+        tools:layout="@layout/fragment_audios" />
+    <fragment
+        android:id="@+id/privateFilesFragment"
+        android:name="com.torx.torxplayer.fragments.PrivateFilesFragment"
+        android:label="fragment_private_files"
+        tools:layout="@layout/fragment_private_files" />
+</navigation>
