@@ -45,12 +45,14 @@ class VideosFragment : Fragment() {
         // initialize the recyclerview
         setupRecyclerView()
 
-        // check storage permission
-        checkMediaPermission()
-
         return binding.root
     }
 
+    override fun onResume() {
+        super.onResume()
+        // check storage permission
+        checkMediaPermission()
+    }
     companion object {
         @JvmStatic
         fun newInstance() = VideosFragment()
@@ -60,8 +62,6 @@ class VideosFragment : Fragment() {
         binding.videoRV.layoutManager = GridLayoutManager(requireContext(), 2,
             LinearLayoutManager.VERTICAL, false)
         binding.videoRV.setHasFixedSize(true)
-//        videoAdapter = VideosAdapter(requireContext(), videoList)
-//        binding.videoRV.adapter = videoAdapter
     }
 
     // this function will be called when the fragment is created when to check the permissions
@@ -129,9 +129,9 @@ class VideosFragment : Fragment() {
                 val contentUri: Uri = ContentUris.withAppendedId(queryUri, id)
 
                 // **CRITICAL CHANGE**: Generate thumbnail in the background
-                val thumbnail = getVideoThumbnail(requireContext(), contentUri)
+//                val thumbnail = getVideoThumbnail(requireContext(), contentUri)
 
-                mediaList.add(Video(id = id, title = name, contentUri = contentUri, thumbnail = thumbnail,
+                mediaList.add(Video(id = id, title = name, contentUri = contentUri,
                     dateAdded = dateAdded, mimeType = mimeType, duration = duration, folderName = folderName,
                     size = size.toString(), path = path))
             }
@@ -147,9 +147,7 @@ class VideosFragment : Fragment() {
             // You can specify a time in microseconds to get a frame at a specific point.
             // If you want the first frame, you can typically use 0L.
             // You can also specify the option to get the closest sync frame or a representative frame.
-            return mediaMetadataRetriever.getFrameAtTime(-1
-//                0L, // Time in microseconds
-//                MediaMetadataRetriever.OPTION_CLOSEST_SYNC // Option for frame retrieval
+            return mediaMetadataRetriever.getFrameAtTime(
             )
         } catch (e: Exception) {
             Log.e("VideoThumbnail", "Error getting video thumbnail: ${e.message}")
@@ -175,42 +173,31 @@ class VideosFragment : Fragment() {
     }
 
     private fun loadMediaFiles() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            //show progress bar while loading
-            binding.emptyView.visibility = View.GONE
-            binding.videoRV.visibility = View.GONE
+        lifecycleScope.launch {
 
+            //show progress bar while loading
             binding.progressBar.visibility = View.VISIBLE
 
             // Switch to the IO dispatcher for background work
-            val fetchedVideos = withContext(Dispatchers.Main) {
+            val fetchedVideos = withContext(Dispatchers.IO) {
                 fetchMediaFiles(requireContext())
             }
 
+            binding.progressBar.visibility = View.GONE
             if (fetchedVideos.isEmpty()) {
-                binding.progressBar.visibility = View.GONE
-                binding.videoRV.visibility = View.GONE
                 binding.emptyView.visibility = View.VISIBLE
             } else {
-                binding.progressBar.visibility = View.GONE
-
                 binding.videoRV.visibility = View.VISIBLE
-                binding.emptyView.visibility = View.GONE
                 videoList = fetchedVideos
-                addDataToAdapter()
-            }
-        }
-    }
 
-    private fun addDataToAdapter() {
-        if (videoList.isEmpty()) {
-            binding.videoRV.visibility = View.GONE
-            binding.emptyView.visibility = View.VISIBLE
-        } else {
-            binding.videoRV.visibility = View.VISIBLE
-            binding.emptyView.visibility = View.GONE
-            videoAdapter = VideosAdapter(requireContext(), videoList)
-            binding.videoRV.adapter = videoAdapter
+                Log.d("VideoList size", videoList.size.toString())
+                // add video list in adapter
+                videoAdapter = VideosAdapter(requireContext(), videoList) { video ->
+                    // handle video click here
+                    Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
+                }
+                binding.videoRV.adapter = videoAdapter
+            }
         }
     }
 }

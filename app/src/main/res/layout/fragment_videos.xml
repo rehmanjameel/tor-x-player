@@ -47,8 +47,10 @@
         android:id="@+id/videoRV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/searchTIL"
-        android:layout_marginTop="5dp"/>
+        />
 
     <TextView
         android:id="@+id/emptyView"

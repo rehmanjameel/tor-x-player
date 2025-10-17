@@ -7,7 +7,7 @@ class Video (
     val id: Long,
     val title: String,
     val contentUri: Uri,
-    val thumbnail: Bitmap?,
+    val thumbnail: Bitmap? = null,
     val dateAdded: Long,
     val mimeType: String,
     val duration: Long,

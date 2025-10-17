@@ -51,4 +51,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // glide for images/videos thumbnail
+    implementation(libs.glide)
+    annotationProcessor("com.github.bumptech.glide:compiler:5.0.5") // Required for generated API
+
 }

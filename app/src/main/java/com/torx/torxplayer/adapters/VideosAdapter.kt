@@ -9,8 +9,12 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.torx.torxplayer.R
 import com.torx.torxplayer.model.Video
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
-class VideosAdapter(val context: Context, val videos: List<Video>) :
+class VideosAdapter(val context: Context, val videos: List<Video>,
+    private val onItemClick: ((Video) -> Unit)? = null) :
     RecyclerView.Adapter<VideosAdapter.VideoViewHolder>() {
 
     override fun onCreateViewHolder(
@@ -27,9 +31,24 @@ class VideosAdapter(val context: Context, val videos: List<Video>) :
         position: Int
     ) {
 
-        val item = videos[position]
-        holder.title.text = item.title
-        holder.thumbnail.setImageBitmap(item.thumbnail)
+        val video = videos[position]
+        holder.title.text = video.title
+
+        holder.duration.text = formatVideoDuration(video.duration)
+
+        Glide.with(context)
+            .asBitmap()
+            .load(video.contentUri)
+            .frame(1000000)
+            .transform(CenterCrop(), RoundedCorners(20))
+            .placeholder(R.drawable.outline_video_library_24)
+            .error(R.drawable.outline_video_library_24)
+            .into(holder.thumbnail)
+
+
+        holder.itemView.setOnClickListener {
+            onItemClick?.invoke(video)
+        }
 
     }
 
@@ -39,8 +58,16 @@ class VideosAdapter(val context: Context, val videos: List<Video>) :
 
     class VideoViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
 
-        val title: TextView = itemView.findViewById(R.id.title)
+        val title: TextView = itemView.findViewById(R.id.videoTitle)
         val thumbnail: ImageView = itemView.findViewById(R.id.thumbnail)
+        val duration: TextView = itemView.findViewById(R.id.videoDuration)
 
+    }
+
+    private fun formatVideoDuration(durationMillis: Long): String {
+        val totalSeconds = durationMillis/1000
+        val minutes = totalSeconds/60
+        val seconds = totalSeconds%60
+        return String.format("%02d:%02d", minutes, seconds)
     }
 }

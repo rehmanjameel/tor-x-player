@@ -11,7 +11,7 @@
         android:title="Audios"
         android:id="@+id/audiosFragment"
         android:orderInCategory="1"
-        android:icon="@drawable/outline_audio_file_24" />
+        android:icon="@drawable/outline_library_music_24" />
 
     <item
         android:title="Private Files"
