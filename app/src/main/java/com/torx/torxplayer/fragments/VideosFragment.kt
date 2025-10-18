@@ -18,6 +18,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.ActionOnlyNavDirections
+import androidx.navigation.NavController
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.torx.torxplayer.R
@@ -59,7 +62,7 @@ class VideosFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        binding.videoRV.layoutManager = GridLayoutManager(requireContext(), 2,
+        binding.videoRV.layoutManager = GridLayoutManager(requireContext(), 1,
             LinearLayoutManager.VERTICAL, false)
         binding.videoRV.setHasFixedSize(true)
     }
@@ -195,6 +198,9 @@ class VideosFragment : Fragment() {
                 videoAdapter = VideosAdapter(requireContext(), videoList) { video ->
                     // handle video click here
                     Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
+                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(video.contentUri.toString(),
+                        video.title)
+                    findNavController().navigate(action)
                 }
                 binding.videoRV.adapter = videoAdapter
             }

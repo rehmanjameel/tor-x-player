@@ -1,6 +1,7 @@
 package com.torx.torxplayer
 
 import android.os.Bundle
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -27,11 +28,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         //find the NavHostFragment and get its NavController
-        val navHostFragment = supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment
         navController = navHostFragment.navController
 
         // Get reference to the BottomNavigationView from the layout
         val navView: BottomNavigationView = binding.bottomNavView
+        binding.bottomNavView.itemRippleColor = null
 
         // Set item icon tint list to null (optional, to disable default icon tinting)
         navView.itemIconTintList = null
@@ -39,6 +42,21 @@ class MainActivity : AppCompatActivity() {
         // Set up the BottomNavigationView with the NavController for navigation
         navView.setupWithNavController(navController)
 
+        // hide the bottom nav view in custom fragments
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+
+            when (destination.id) {
+                R.id.videosFragment,
+                R.id.audiosFragment,
+                R.id.privateFilesFragment -> {
+                    binding.bottomNavView.visibility = View.VISIBLE
+                }
+
+                else -> {
+                    binding.bottomNavView.visibility = View.GONE
+                }
+            }
+        }
 
     }
 }

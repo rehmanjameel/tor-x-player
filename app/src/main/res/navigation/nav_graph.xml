@@ -9,7 +9,11 @@
         android:id="@+id/videosFragment"
         android:name="com.torx.torxplayer.fragments.VideosFragment"
         android:label="fragment_videos"
-        tools:layout="@layout/fragment_videos" />
+        tools:layout="@layout/fragment_videos" >
+        <action
+            android:id="@+id/action_videosFragment_to_videoPlayerFragment"
+            app:destination="@id/videoPlayerFragment" />
+    </fragment>
     <fragment
         android:id="@+id/audiosFragment"
         android:name="com.torx.torxplayer.fragments.AudiosFragment"
@@ -20,4 +24,22 @@
         android:name="com.torx.torxplayer.fragments.PrivateFilesFragment"
         android:label="fragment_private_files"
         tools:layout="@layout/fragment_private_files" />
+    <fragment
+        android:id="@+id/videoPlayerFragment"
+        android:name="com.torx.torxplayer.fragments.VideoPlayerFragment"
+        android:label="Video Player"
+        tools:layout="@layout/fragment_video_player" >
+        <action
+            android:id="@+id/action_videoPlayerFragment_to_videosFragment"
+            app:destination="@id/videosFragment" />
+
+        <argument
+            android:name="videoUri"
+            app:argType="string" />
+
+        <argument
+            android:name="videoTitle"
+            app:argType="string"/>
+
+    </fragment>
 </navigation>

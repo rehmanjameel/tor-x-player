@@ -1,6 +1,7 @@
 package com.torx.torxplayer.adapters
 
 import android.content.Context
+import android.icu.text.DecimalFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -36,6 +37,9 @@ class VideosAdapter(val context: Context, val videos: List<Video>,
 
         holder.duration.text = formatVideoDuration(video.duration)
 
+        val convertedSize = convertBytesToMB(video.size.toLongOrNull() ?: 0L)
+        holder.size.text = "$convertedSize MB | "
+
         Glide.with(context)
             .asBitmap()
             .load(video.contentUri)
@@ -61,6 +65,7 @@ class VideosAdapter(val context: Context, val videos: List<Video>,
         val title: TextView = itemView.findViewById(R.id.videoTitle)
         val thumbnail: ImageView = itemView.findViewById(R.id.thumbnail)
         val duration: TextView = itemView.findViewById(R.id.videoDuration)
+        val size: TextView = itemView.findViewById(R.id.videoSize)
 
     }
 
@@ -69,5 +74,11 @@ class VideosAdapter(val context: Context, val videos: List<Video>,
         val minutes = totalSeconds/60
         val seconds = totalSeconds%60
         return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    private fun convertBytesToMB(bytes: Long): Double {
+        val mb = bytes /(1024.0 * 1024.0)
+        val decimalFormat = DecimalFormat("#.##")
+        return decimalFormat.format(mb).toDouble()
     }
 }
