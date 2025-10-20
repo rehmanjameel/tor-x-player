@@ -14,7 +14,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
-class VideosAdapter(val context: Context, val videos: List<Video>,
+class VideosAdapter(val context: Context, var videos: List<Video>,
     private val onItemClick: ((Video) -> Unit)? = null) :
     RecyclerView.Adapter<VideosAdapter.VideoViewHolder>() {
 
@@ -54,6 +54,11 @@ class VideosAdapter(val context: Context, val videos: List<Video>,
             onItemClick?.invoke(video)
         }
 
+    }
+
+    fun filterList(filterList: List<Video>) {
+        videos = filterList
+        notifyDataSetChanged()
     }
 
     override fun getItemCount(): Int {

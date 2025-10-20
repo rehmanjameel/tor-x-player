@@ -9,6 +9,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -48,6 +50,55 @@ class VideosFragment : Fragment() {
         // initialize the recyclerview
         setupRecyclerView()
 
+        binding.searchIcon.setOnClickListener {
+            binding.searchTIL.visibility = View.VISIBLE
+            binding.backArrow.visibility = View.VISIBLE
+            binding.title.visibility = View.GONE
+            binding.searchIcon.visibility = View.GONE
+
+            binding.searchTIET.requestFocus()
+        }
+
+        binding.backArrow.setOnClickListener {
+            binding.searchTIL.visibility = View.GONE
+            binding.backArrow.visibility = View.GONE
+            binding.title.visibility = View.VISIBLE
+            binding.searchIcon.visibility = View.VISIBLE
+
+            binding.searchTIET.clearFocus()
+            binding.searchTIET.text?.clear()
+        }
+
+        // search videos
+        binding.searchTIET.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) {
+
+            }
+
+            override fun beforeTextChanged(
+                p0: CharSequence?,
+                p1: Int,
+                p2: Int,
+                p3: Int
+            ) {
+            }
+
+            override fun onTextChanged(
+                p0: CharSequence?,
+                p1: Int,
+                p2: Int,
+                p3: Int
+            ) {
+                val query = p0.toString().trim()
+                if (query.isNotEmpty()) {
+                    searchVideos(query)
+                } else {
+                    videoAdapter.filterList(videoList)
+                }
+            }
+
+        })
+
         return binding.root
     }
 
@@ -56,25 +107,29 @@ class VideosFragment : Fragment() {
         // check storage permission
         checkMediaPermission()
     }
+
     companion object {
         @JvmStatic
         fun newInstance() = VideosFragment()
     }
 
     private fun setupRecyclerView() {
-        binding.videoRV.layoutManager = GridLayoutManager(requireContext(), 1,
-            LinearLayoutManager.VERTICAL, false)
+        binding.videoRV.layoutManager = GridLayoutManager(
+            requireContext(), 1,
+            LinearLayoutManager.VERTICAL, false
+        )
         binding.videoRV.setHasFixedSize(true)
     }
 
     // this function will be called when the fragment is created when to check the permissions
-    private val storagePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) {
-            videoList = fetchMediaFiles(requireContext())
-        } else {
-            Toast.makeText(requireContext(), "Permission Denied", Toast.LENGTH_SHORT).show()
+    private val storagePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                videoList = fetchMediaFiles(requireContext())
+            } else {
+                Toast.makeText(requireContext(), "Permission Denied", Toast.LENGTH_SHORT).show()
+            }
         }
-    }
 
     fun fetchMediaFiles(context: Context): List<Video> {
         val mediaList = mutableListOf<Video>()
@@ -91,7 +146,8 @@ class VideosFragment : Fragment() {
         )
 
         // Selection for images and videos only
-        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? OR ${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
+        val selection =
+            "${MediaStore.Files.FileColumns.MEDIA_TYPE}=? OR ${MediaStore.Files.FileColumns.MEDIA_TYPE}=?"
         val selectionArgs = arrayOf(
             MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
         )
@@ -115,7 +171,8 @@ class VideosFragment : Fragment() {
             val mimeTypeColumn = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
 
             val durationColumn = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-            val folderNameColumn = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
+            val folderNameColumn =
+                it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
             val sizeColumn = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.SIZE)
             val pathColumn = it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA)
 
@@ -131,33 +188,22 @@ class VideosFragment : Fragment() {
 
                 val contentUri: Uri = ContentUris.withAppendedId(queryUri, id)
 
-                // **CRITICAL CHANGE**: Generate thumbnail in the background
-//                val thumbnail = getVideoThumbnail(requireContext(), contentUri)
-
-                mediaList.add(Video(id = id, title = name, contentUri = contentUri,
-                    dateAdded = dateAdded, mimeType = mimeType, duration = duration, folderName = folderName,
-                    size = size.toString(), path = path))
+                mediaList.add(
+                    Video(
+                        id = id,
+                        title = name,
+                        contentUri = contentUri,
+                        dateAdded = dateAdded,
+                        mimeType = mimeType,
+                        duration = duration,
+                        folderName = folderName,
+                        size = size.toString(),
+                        path = path
+                    )
+                )
             }
         }
         return mediaList
-    }
-
-    // get the video thumbnail using MediaMetadataRetriever and video uri
-    fun getVideoThumbnail(context: Context, videoUri: Uri): Bitmap? {
-        val mediaMetadataRetriever = MediaMetadataRetriever()
-        try {
-            mediaMetadataRetriever.setDataSource(context, videoUri)
-            // You can specify a time in microseconds to get a frame at a specific point.
-            // If you want the first frame, you can typically use 0L.
-            // You can also specify the option to get the closest sync frame or a representative frame.
-            return mediaMetadataRetriever.getFrameAtTime(
-            )
-        } catch (e: Exception) {
-            Log.e("VideoThumbnail", "Error getting video thumbnail: ${e.message}")
-            return null
-        } finally {
-            mediaMetadataRetriever.release() // Release resources
-        }
     }
 
     // check the storage permission
@@ -168,7 +214,11 @@ class VideosFragment : Fragment() {
             android.Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-        if (ContextCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             loadMediaFiles()
         } else {
             storagePermissionLauncher.launch(permission)
@@ -198,12 +248,24 @@ class VideosFragment : Fragment() {
                 videoAdapter = VideosAdapter(requireContext(), videoList) { video ->
                     // handle video click here
                     Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(video.contentUri.toString(),
-                        video.title)
+                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                        video.contentUri.toString(),
+                        video.title
+                    )
                     findNavController().navigate(action)
                 }
                 binding.videoRV.adapter = videoAdapter
             }
         }
     }
+
+    // search videos
+    private fun searchVideos(query: String) {
+
+        val filteredVideos = videoList.filter { video ->
+            video.title.contains(query, ignoreCase = true)
+        }
+        videoAdapter.filterList(filteredVideos)
+    }
+
 }
