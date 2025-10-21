@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/black"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".fragments.VideosFragment">
 
@@ -26,7 +27,7 @@
                 android:padding="10dp"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:textColor="@color/black"
+                android:textColor="@color/white"
                 android:layout_marginTop="30dp"
                 android:layout_marginStart="10dp"/>
 
@@ -39,8 +40,6 @@
                 android:padding="10dp"
                 android:visibility="gone"
                 android:layout_marginEnd="10dp"
-                app:tint="@color/black"
-                android:layout_alignParentStart="true"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent"/>
 
@@ -82,6 +81,7 @@
                 android:padding="10dp"
                 android:layout_alignParentEnd="true"
                 android:layout_marginEnd="10dp"
+                app:tint="@color/white"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
