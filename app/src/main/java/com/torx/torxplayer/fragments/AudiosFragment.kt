@@ -9,14 +9,19 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.torx.torxplayer.OptionsMenuClickListener
+import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
 import com.torx.torxplayer.databinding.FragmentAudiosBinding
 import com.torx.torxplayer.model.Audio
@@ -29,7 +34,7 @@ class AudiosFragment : Fragment() {
     private lateinit var binding: FragmentAudiosBinding
 
     private lateinit var audioAdapter: AudioAdapter
-    private lateinit var audioList: List<Audio>
+    private lateinit var audioList: MutableList<Audio>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -57,7 +62,7 @@ class AudiosFragment : Fragment() {
         binding.audioRV.setHasFixedSize(true)
     }
     // fetch audio files from the mobile
-    private fun fetchAudioFiles(context: Context): List<Audio> {
+    private fun fetchAudioFiles(context: Context): MutableList<Audio> {
         val audioList = mutableListOf<Audio>()
 
         val projection = arrayOf(
@@ -113,18 +118,24 @@ class AudiosFragment : Fragment() {
                     id
                 )
 
+                val path = cursor.getString(pathColumn)
+                val size = cursor.getLong(sizeColumn)
+                val albumIdValue = cursor.getLong(albumId)
+
                 audioList.add(
                     Audio(
                         id = id,
                         title = title ?: displayName,
-                        artist,
-                        album,
-                        duration,
-                        contentUri,
-                        pathColumn,
-                        sizeColumn,
-                        albumId
-                        ))
+                        artist = artist,
+                        album = album,
+                        duration = duration,
+                        uri = contentUri,
+                        path = path,
+                        size = size,
+                        albumId = albumIdValue
+                    )
+                )
+
 
             }
         }
@@ -180,17 +191,56 @@ class AudiosFragment : Fragment() {
 
                 Log.d("audioList size", audioList.size.toString())
                 // add video list in adapter
-                audioAdapter = AudioAdapter(requireContext(), audioList) { video ->
-                    // handle video click here
-                    Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
-//                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-//                        video.contentUri.toString(),
-//                        video.title
-//                    )
-//                    findNavController().navigate(action)
-                }
+                audioAdapter = AudioAdapter(requireContext(), audioList,
+                    object : OptionsMenuClickListener {
+                    override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                        performOptionsMenuClick(position, anchorView)
+                    }
+                })
                 binding.audioRV.adapter = audioAdapter
             }
         }
+    }
+
+    // this method will handle the onclick options click
+    private fun performOptionsMenuClick(position: Int, anchorView: View) {
+        // create object of PopupMenu and pass context and view where we want
+        // to show the popup menu
+        val popupMenu = PopupMenu(requireContext(), anchorView)
+        // add the menu
+        popupMenu.inflate(R.menu.options_menu)
+        // implement on menu item click Listener
+        popupMenu.setOnMenuItemClickListener(object : PopupMenu.OnMenuItemClickListener{
+            override fun onMenuItemClick(item: MenuItem?): Boolean {
+                when(item?.itemId){
+                    R.id.playVideo -> {
+                        val tempLang = audioList[position]
+
+                        val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+                            tempLang.uri.toString(), tempLang.title)
+                        findNavController().navigate(action)
+
+                        // here are the logic to delete an item from the list
+
+                    }
+                    // in the same way you can implement others
+                    R.id.addToPrivate -> {
+                        // define
+                        Toast.makeText(requireContext() , "Add to private clicked" , Toast.LENGTH_SHORT).show()
+                        return true
+                    }
+                    R.id.deleteVideo -> {
+                        // define
+                        val tempLang = audioList[position]
+                        audioList.remove(tempLang)
+                        audioAdapter.notifyDataSetChanged()
+                        Toast.makeText(requireContext() , "delete video clicked" , Toast.LENGTH_SHORT).show()
+                        return true
+                    }
+                }
+                return false
+            }
+        })
+        popupMenu.show()
     }
 }

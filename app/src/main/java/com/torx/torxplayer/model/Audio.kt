@@ -10,7 +10,7 @@ class Audio(
     val album: String?,
     val duration: Long,
     val uri: Uri,
-    val path: Int,
-    val size: Int,
-    val albumId: Int
+    val path: String?,
+    val size: Long,
+    val albumId: Long
 )

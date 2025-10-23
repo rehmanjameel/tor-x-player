@@ -34,7 +34,7 @@
                 android:orientation="vertical"
                 android:layout_marginEnd="10dp"
                 android:layout_toEndOf="@id/thumbnail"
-                android:layout_toStartOf="@+id/moreOptionsIcon"
+                android:layout_toStartOf="@+id/videoMoreOptionsIcon"
                 android:layout_centerVertical="true"
                 >
 
@@ -80,7 +80,7 @@
             </LinearLayout>
 
             <ImageView
-                android:id="@+id/moreOptionsIcon"
+                android:id="@+id/videoMoreOptionsIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/baseline_more_vert_24"

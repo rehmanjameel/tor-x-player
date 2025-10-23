@@ -18,7 +18,11 @@
         android:id="@+id/audiosFragment"
         android:name="com.torx.torxplayer.fragments.AudiosFragment"
         android:label="fragment_audios"
-        tools:layout="@layout/fragment_audios" />
+        tools:layout="@layout/fragment_audios" >
+        <action
+            android:id="@+id/action_audiosFragment_to_audioPlayerFragment"
+            app:destination="@id/audioPlayerFragment" />
+    </fragment>
     <fragment
         android:id="@+id/privateFilesFragment"
         android:name="com.torx.torxplayer.fragments.PrivateFilesFragment"
@@ -41,5 +45,22 @@
             android:name="videoTitle"
             app:argType="string"/>
 
+    </fragment>
+    <fragment
+        android:id="@+id/audioPlayerFragment"
+        android:name="com.torx.torxplayer.fragments.AudioPlayerFragment"
+        android:label="fragment_audio_player"
+        tools:layout="@layout/fragment_audio_player" >
+        <action
+            android:id="@+id/action_audioPlayerFragment_to_audiosFragment"
+            app:destination="@id/audiosFragment" />
+
+        <argument
+            android:name="audioUri"
+            app:argType="string"/>
+
+        <argument
+            android:name="audioTitle"
+            app:argType="string"/>
     </fragment>
 </navigation>

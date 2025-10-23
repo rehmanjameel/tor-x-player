@@ -13,9 +13,10 @@ import com.torx.torxplayer.model.Video
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.torx.torxplayer.OptionsMenuClickListener
 
-class VideosAdapter(val context: Context, var videos: List<Video>,
-    private val onItemClick: ((Video) -> Unit)? = null) :
+class VideosAdapter(val context: Context, var videos: MutableList<Video>,
+    private val onOptionsMenuClickListener: OptionsMenuClickListener):
     RecyclerView.Adapter<VideosAdapter.VideoViewHolder>() {
 
     override fun onCreateViewHolder(
@@ -50,13 +51,13 @@ class VideosAdapter(val context: Context, var videos: List<Video>,
             .into(holder.thumbnail)
 
 
-        holder.itemView.setOnClickListener {
-            onItemClick?.invoke(video)
+        holder.moreOptions.setOnClickListener {
+            onOptionsMenuClickListener.onOptionsMenuClicked(position, it)
         }
 
     }
 
-    fun filterList(filterList: List<Video>) {
+    fun filterList(filterList: MutableList<Video>) {
         videos = filterList
         notifyDataSetChanged()
     }
@@ -69,6 +70,9 @@ class VideosAdapter(val context: Context, var videos: List<Video>,
 
         val title: TextView = itemView.findViewById(R.id.videoTitle)
         val thumbnail: ImageView = itemView.findViewById(R.id.thumbnail)
+
+        val moreOptions: ImageView = itemView.findViewById(R.id.videoMoreOptionsIcon)
+
         val duration: TextView = itemView.findViewById(R.id.videoDuration)
         val size: TextView = itemView.findViewById(R.id.videoSize)
 

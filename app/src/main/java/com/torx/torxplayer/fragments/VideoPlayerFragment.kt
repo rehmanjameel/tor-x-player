@@ -49,7 +49,7 @@ class VideoPlayerFragment : Fragment() {
         setFullScreen()
         setLockScreen()
         preparePlayer()
-
+        addBackForward()
         setOrientation()
 
         binding.player.findViewById<ImageView>(R.id.exo_play).setOnClickListener {
@@ -137,6 +137,23 @@ class VideoPlayerFragment : Fragment() {
             .createMediaSource(MediaItem.fromUri(url!!))
     }
 
+    private fun addBackForward() {
+        binding.player.findViewById<ImageView>(R.id.exo_rew).setOnClickListener {
+            exoPlayer?.let {
+                val newPosition = (it.currentPosition - 10_000).coerceAtLeast(0L) // rewind 10 seconds
+                it.seekTo(newPosition)
+            }
+        }
+
+        binding.player.findViewById<ImageView>(R.id.exo_ffwd).setOnClickListener {
+            exoPlayer?.let {
+                val duration = it.duration
+                val newPosition = (it.currentPosition + 10_000).coerceAtMost(duration)
+                it.seekTo(newPosition)
+            }
+        }
+
+    }
     private fun setOrientation() {
         mOrientationListener = object : OrientationEventListener(
             requireContext(),

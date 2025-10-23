@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -25,6 +26,7 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentVideosBinding
@@ -38,7 +40,7 @@ class VideosFragment : Fragment() {
 
     private lateinit var binding: FragmentVideosBinding
     private lateinit var videoAdapter: VideosAdapter
-    private lateinit var videoList: List<Video>
+    private lateinit var videoList: MutableList<Video>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -121,7 +123,7 @@ class VideosFragment : Fragment() {
             }
         }
 
-    fun fetchMediaFiles(context: Context): List<Video> {
+    fun fetchMediaFiles(context: Context): MutableList<Video> {
         val mediaList = mutableListOf<Video>()
 
         val projection = arrayOf(
@@ -235,18 +237,53 @@ class VideosFragment : Fragment() {
 
                 Log.d("VideoList size", videoList.size.toString())
                 // add video list in adapter
-                videoAdapter = VideosAdapter(requireContext(), videoList) { video ->
-                    // handle video click here
+                videoAdapter = VideosAdapter(requireContext(), videoList, object :
+                    OptionsMenuClickListener {
+                    override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                        // handle video click here
+                        performOptionsMenuClick(position, anchorView)
+                    }
+                })
+                binding.videoRV.adapter = videoAdapter
+            }
+        }
+    }
+
+    private fun performOptionsMenuClick(position: Int, anchorView: View) {
+        val popupMenu = PopupMenu(requireContext(), anchorView)
+        popupMenu.inflate(R.menu.options_menu)
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.playVideo -> {
+                    val video = videoList[position]
                     Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri.toString(),
                         video.title
                     )
                     findNavController().navigate(action)
+                    true
                 }
-                binding.videoRV.adapter = videoAdapter
+
+                R.id.addToPrivate -> {
+                    Toast.makeText(requireContext(), "Add to private clicked", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                R.id.deleteVideo -> {
+                    val tempLang = videoList[position]
+                    videoList.remove(tempLang)
+                    videoAdapter.notifyDataSetChanged()
+                    Toast.makeText(requireContext(), "Deleted video", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                else -> false
             }
         }
+
+        popupMenu.show()
     }
 
     // search videos
@@ -254,7 +291,7 @@ class VideosFragment : Fragment() {
 
         val filteredVideos = videoList.filter { video ->
             video.title.contains(query, ignoreCase = true)
-        }
+        }.toMutableList()
         videoAdapter.filterList(filteredVideos)
     }
 
