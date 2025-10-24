@@ -1,8 +1,10 @@
 package com.torx.torxplayer.fragments
 
+import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -13,6 +15,8 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
@@ -35,6 +39,7 @@ class AudiosFragment : Fragment() {
 
     private lateinit var audioAdapter: AudioAdapter
     private lateinit var audioList: MutableList<Audio>
+    private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -46,6 +51,18 @@ class AudiosFragment : Fragment() {
         setupRecyclerView()
 
         checkMediaPermission()
+
+        // Register the launcher for delete request
+        deleteRequestLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                audioAdapter.notifyDataSetChanged()
+                Toast.makeText(requireContext(), "File deleted successfully", Toast.LENGTH_SHORT).show()
+                // You can refresh your list or remove the item here if not already done
+            } else {
+                Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         return binding.root
     }
 
@@ -212,10 +229,11 @@ class AudiosFragment : Fragment() {
         // implement on menu item click Listener
         popupMenu.setOnMenuItemClickListener(object : PopupMenu.OnMenuItemClickListener{
             override fun onMenuItemClick(item: MenuItem?): Boolean {
-                when(item?.itemId){
-                    R.id.playVideo -> {
-                        val tempLang = audioList[position]
+                val tempLang = audioList[position]
 
+                when(item?.itemId){
+
+                    R.id.playVideo -> {
                         val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
                             tempLang.uri.toString(), tempLang.title)
                         findNavController().navigate(action)
@@ -231,10 +249,9 @@ class AudiosFragment : Fragment() {
                     }
                     R.id.deleteVideo -> {
                         // define
-                        val tempLang = audioList[position]
-                        audioList.remove(tempLang)
-                        audioAdapter.notifyDataSetChanged()
-                        Toast.makeText(requireContext() , "delete video clicked" , Toast.LENGTH_SHORT).show()
+
+                        deleteFileFromStorage(tempLang)
+
                         return true
                     }
                 }
@@ -243,4 +260,30 @@ class AudiosFragment : Fragment() {
         })
         popupMenu.show()
     }
+
+    private fun deleteFileFromStorage(tempLang: Audio) {
+        try {
+            // For Android Q (API 29) and below — direct delete
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                val rowsDeleted = requireContext().contentResolver.delete(tempLang.uri, null, null)
+                if (rowsDeleted > 0) {
+                    Toast.makeText(context, "File deleted successfully", Toast.LENGTH_SHORT).show()
+                    audioList.remove(tempLang)
+                    audioAdapter.notifyDataSetChanged()
+                } else {
+                    Toast.makeText(context, "Failed to delete file", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // Android 11+ (Scoped Storage) — user confirmation required
+                val collection = arrayListOf(tempLang.uri)
+                val pendingIntent = MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
+                val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                deleteRequestLauncher.launch(request)
+            }
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+            Toast.makeText(context, "Permission denied to delete file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 }
