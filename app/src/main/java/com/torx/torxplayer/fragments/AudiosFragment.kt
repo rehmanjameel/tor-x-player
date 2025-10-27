@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -20,6 +19,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
@@ -28,7 +28,7 @@ import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
 import com.torx.torxplayer.databinding.FragmentAudiosBinding
-import com.torx.torxplayer.model.Audio
+import com.torx.torxplayer.model.AudiosModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,7 +38,7 @@ class AudiosFragment : Fragment() {
     private lateinit var binding: FragmentAudiosBinding
 
     private lateinit var audioAdapter: AudioAdapter
-    private lateinit var audioList: MutableList<Audio>
+    private lateinit var audioList: MutableList<AudiosModel>
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     override fun onCreateView(
@@ -79,8 +79,8 @@ class AudiosFragment : Fragment() {
         binding.audioRV.setHasFixedSize(true)
     }
     // fetch audio files from the mobile
-    private fun fetchAudioFiles(context: Context): MutableList<Audio> {
-        val audioList = mutableListOf<Audio>()
+    private fun fetchAudioFiles(context: Context): MutableList<AudiosModel> {
+        val audioList = mutableListOf<AudiosModel>()
 
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -108,7 +108,7 @@ class AudiosFragment : Fragment() {
             projection,
             selection,
             null,
-            null
+            sortOrder
         )
 
         cursor?.use {
@@ -140,13 +140,13 @@ class AudiosFragment : Fragment() {
                 val albumIdValue = cursor.getLong(albumId)
 
                 audioList.add(
-                    Audio(
+                    AudiosModel(
                         id = id,
                         title = title ?: displayName,
                         artist = artist,
                         album = album,
                         duration = duration,
-                        uri = contentUri,
+                        uri = contentUri.toString(),
                         path = path,
                         size = size,
                         albumId = albumIdValue
@@ -261,11 +261,11 @@ class AudiosFragment : Fragment() {
         popupMenu.show()
     }
 
-    private fun deleteFileFromStorage(tempLang: Audio) {
+    private fun deleteFileFromStorage(tempLang: AudiosModel) {
         try {
             // For Android Q (API 29) and below — direct delete
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(tempLang.uri, null, null)
+                val rowsDeleted = requireContext().contentResolver.delete(tempLang.uri.toUri(), null, null)
                 if (rowsDeleted > 0) {
                     Toast.makeText(context, "File deleted successfully", Toast.LENGTH_SHORT).show()
                     audioList.remove(tempLang)
@@ -275,7 +275,7 @@ class AudiosFragment : Fragment() {
                 }
             } else {
                 // Android 11+ (Scoped Storage) — user confirmation required
-                val collection = arrayListOf(tempLang.uri)
+                val collection = arrayListOf(tempLang.uri.toUri())
                 val pendingIntent = MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
                 val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
                 deleteRequestLauncher.launch(request)

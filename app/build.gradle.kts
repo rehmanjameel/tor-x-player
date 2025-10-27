@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("androidx.navigation.safeargs")
-
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -65,4 +65,16 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.8.0")
     implementation("androidx.media3:media3-ui-compose:1.8.0")
 
+    val room_version = "2.8.3"
+
+    implementation("androidx.room:room-runtime:$room_version")
+
+    // If this project only uses Java source, use the Java annotationProcessor
+    // No additional plugins are necessary
+    annotationProcessor("androidx.room:room-compiler:$room_version")
+
+    // optional - Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:$room_version")
+
+    ksp("androidx.room:room-compiler:$room_version")
 }

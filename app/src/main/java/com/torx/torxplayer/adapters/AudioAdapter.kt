@@ -4,26 +4,24 @@ import android.content.ContentUris
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
-import android.icu.text.DecimalFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.torx.torxplayer.R
-import com.torx.torxplayer.model.Audio
-import androidx.core.net.toUri
+import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.OptionsMenuClickListener
 
-class AudioAdapter(val context: Context, private var audioList: MutableList<Audio>,
+class AudioAdapter(val context: Context, private var audioList: MutableList<AudiosModel>,
                    private var optionsMenuClickListener: OptionsMenuClickListener
 ) : RecyclerView.Adapter<AudioAdapter.AudioViewHolder>() {
 
@@ -60,7 +58,7 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
         Glide.with(context)
             .load(albumArtUri)
             .transform(CenterCrop(), RoundedCorners(20))
-            .error(R.drawable.outline_library_music_24)
+            .error(R.drawable.audio_thumbnail)
             .into(holder.thumbnail)
 
         // If album art not available, fallback to embedded art
@@ -70,17 +68,17 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
             ) {
                 try {
                     val retriever = MediaMetadataRetriever()
-                    retriever.setDataSource(context, audio.uri)
+                    retriever.setDataSource(context, audio.uri.toUri())
                     val art = retriever.embeddedPicture
                     if (art != null) {
                         val bitmap = BitmapFactory.decodeByteArray(art, 0, art.size)
                         holder.thumbnail.setImageBitmap(bitmap)
                     } else {
-                        holder.thumbnail.setImageResource(R.drawable.outline_library_music_24)
+                        holder.thumbnail.setImageResource(R.drawable.audio_thumbnail)
                     }
                     retriever.release()
                 } catch (e: Exception) {
-                    holder.thumbnail.setImageResource(R.drawable.outline_library_music_24)
+                    holder.thumbnail.setImageResource(R.drawable.audio_thumbnail)
                 }
             }
         }
@@ -90,7 +88,7 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
         }
     }
 
-    fun filterList(filterList: MutableList<Audio>) {
+    fun filterList(filterList: MutableList<AudiosModel>) {
         audioList = filterList
         notifyDataSetChanged()
     }

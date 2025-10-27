@@ -1,14 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".fragments.PrivateFilesFragment">
 
-    <!-- TODO: Update blank fragment layout -->
+    <!-- Title -->
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="Private file screen" />
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Create PIN"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="80dp" />
 
-</FrameLayout>
+    <!-- PIN Dots -->
+    <LinearLayout
+        android:id="@+id/pinDotsLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <View
+            android:id="@+id/dot1"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_inactive"/>
+
+        <View
+            android:id="@+id/dot2"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_inactive"/>
+
+        <View
+            android:id="@+id/dot3"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_inactive"/>
+
+        <View
+            android:id="@+id/dot4"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_inactive"/>
+    </LinearLayout>
+
+    <!-- Keypad -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/pinDotsLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginHorizontal="30dp"
+        android:orientation="vertical"
+        >
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+            <include layout="@layout/keypad_button" android:id="@+id/btn1" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn2" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn3" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+            <include layout="@layout/keypad_button" android:id="@+id/btn4" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn5" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn6" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+            <include layout="@layout/keypad_button" android:id="@+id/btn7" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn8" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn9" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_horizontal">
+
+            <!-- Empty, 0, and Delete -->
+            <View android:layout_width="0dp" android:layout_height="0dp" />
+            <include layout="@layout/keypad_button" android:id="@+id/btn0" />
+            <include layout="@layout/keypad_button" android:id="@+id/btnDel" />
+
+        </LinearLayout>
+    </LinearLayout>
+<!--    <GridLayout-->
+<!--        android:id="@+id/keypadGrid"-->
+<!--        android:layout_width="0dp"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:columnCount="3"-->
+<!--        android:rowCount="4"-->
+<!--        android:layout_marginTop="50dp"-->
+<!--        android:visibility="gone"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/pinDotsLayout"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        android:layout_marginHorizontal="30dp">-->
+
+<!--        &lt;!&ndash; 1–9 buttons &ndash;&gt;-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn1" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn2" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn3" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn4" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn5" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn6" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn7" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn8" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn9" />-->
+
+<!--        &lt;!&ndash; Empty, 0, and Delete &ndash;&gt;-->
+<!--        <View android:layout_width="0dp" android:layout_height="0dp" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btn0" />-->
+<!--        <include layout="@layout/keypad_button" android:id="@+id/btnDel" />-->
+<!--    </GridLayout>-->
+
+</androidx.constraintlayout.widget.ConstraintLayout>

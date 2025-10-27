@@ -20,7 +20,7 @@
             android:id="@+id/audioThumbnail"
             android:layout_width="100dp"
             android:layout_height="100dp"
-            android:src="@drawable/outline_library_music_24"
+            android:src="@drawable/audio_thumbnail"
             android:scaleType="fitXY"
             android:layout_margin="10dp"
             android:adjustViewBounds="true"

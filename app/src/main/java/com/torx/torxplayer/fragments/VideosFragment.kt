@@ -4,8 +4,6 @@ import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -24,9 +22,9 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.ActionOnlyNavDirections
-import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -34,8 +32,8 @@ import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentVideosBinding
-import com.torx.torxplayer.model.Audio
-import com.torx.torxplayer.model.Video
+import com.torx.torxplayer.model.VideosModel
+import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,9 +45,11 @@ class VideosFragment : Fragment() {
 
     private lateinit var binding: FragmentVideosBinding
     private lateinit var videoAdapter: VideosAdapter
-    private lateinit var videoList: MutableList<Video>
+    private var videoList = mutableListOf<VideosModel>()
+
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private var lastDeletedUri: Uri? = null
+    private lateinit var viewModel : FilesViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -59,7 +59,7 @@ class VideosFragment : Fragment() {
         binding = FragmentVideosBinding.inflate(inflater, container, false)
 
         // initialize the recyclerview
-        setupRecyclerView()
+//        setupRecyclerView()
 
         binding.searchIcon.setOnClickListener {
             binding.searchTIL.visibility = View.VISIBLE
@@ -100,6 +100,12 @@ class VideosFragment : Fragment() {
 
         })
 
+        val app = requireActivity().application
+        viewModel = ViewModelProvider(
+            requireActivity(),
+            ViewModelProvider.AndroidViewModelFactory.getInstance(app)
+        )[FilesViewModel::class.java]
+
         // Register the launcher for delete request
         deleteRequestLauncher =
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -111,7 +117,8 @@ class VideosFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                     lastDeletedUri.let { deletedUri ->
-                        videoList.removeAll { it.contentUri ==  deletedUri}
+                        viewModel.deleteVideosByUri(deletedUri.toString()) // also remove from DB
+                        videoList.removeAll { it.contentUri ==  deletedUri.toString()}
                         videoAdapter.notifyDataSetChanged()
                     }
                     // You can refresh your list or remove the item here if not already done
@@ -123,24 +130,50 @@ class VideosFragment : Fragment() {
         return binding.root
     }
 
-    override fun onResume() {
-        super.onResume()
-        // check storage permission
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val app = requireActivity().application
+        viewModel = ViewModelProvider(
+            requireActivity(),
+            ViewModelProvider.AndroidViewModelFactory.getInstance(app)
+        )[FilesViewModel::class.java]
+
+        setupRecyclerView()
+
+        // Observe database once here
+        viewModel.allPublicVideos.observe(viewLifecycleOwner) { videos ->
+            videoList.clear()
+            videoList.addAll(videos)
+            videoAdapter.notifyDataSetChanged()
+            if (videos.isNotEmpty()) {
+                binding.videoRV.visibility = View.VISIBLE
+                binding.emptyView.visibility = View.GONE
+                binding.progressBar.visibility = View.GONE
+            } else {
+                binding.videoRV.visibility = View.GONE
+                binding.emptyView.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.GONE
+            }
+        }
+
         checkMediaPermission()
     }
 
-    companion object {
-        @JvmStatic
-        fun newInstance() = VideosFragment()
+    private fun setupRecyclerView() {
+        Log.e("video list", "$videoList")
+        videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                performOptionsMenuClick(position, anchorView)
+            }
+        })
+        binding.videoRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 1)
+            adapter = videoAdapter
+            setHasFixedSize(true)
+        }
     }
 
-    private fun setupRecyclerView() {
-        binding.videoRV.layoutManager = GridLayoutManager(
-            requireContext(), 1,
-            LinearLayoutManager.VERTICAL, false
-        )
-        binding.videoRV.setHasFixedSize(true)
-    }
 
     // this function will be called when the fragment is created when to check the permissions
     private val storagePermissionLauncher =
@@ -152,8 +185,8 @@ class VideosFragment : Fragment() {
             }
         }
 
-    fun fetchMediaFiles(context: Context): MutableList<Video> {
-        val mediaList = mutableListOf<Video>()
+    fun fetchMediaFiles(context: Context): MutableList<VideosModel> {
+        val mediaList = mutableListOf<VideosModel>()
 
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
@@ -165,13 +198,6 @@ class VideosFragment : Fragment() {
             MediaStore.Video.Media.SIZE,
             MediaStore.Video.Media.DATA,
         )
-
-        // Selection for images and videos only
-//        val selection =
-//            "${MediaStore.Video.Media.MEDIA_TYPE}=? OR ${MediaStore.Video.Media.MEDIA_TYPE}=?"
-//        val selectionArgs = arrayOf(
-//            MediaStore.Video.Media.MEDIA_TYPE_VIDEO.toString()
-//        )
 
         val sortOrder = "${MediaStore.Video.Media.DATE_ADDED} DESC"
 
@@ -210,10 +236,10 @@ class VideosFragment : Fragment() {
                 val contentUri: Uri = ContentUris.withAppendedId(queryUri, id)
 
                 mediaList.add(
-                    Video(
+                    VideosModel(
                         id = id,
                         title = name,
-                        contentUri = contentUri,
+                        contentUri = contentUri.toString(),
                         dateAdded = dateAdded,
                         mimeType = mimeType,
                         duration = duration,
@@ -240,40 +266,37 @@ class VideosFragment : Fragment() {
                 permission
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            loadMediaFiles()
+
+            // Check DB content
+            viewLifecycleOwner.lifecycleScope.launch {
+                val currentVideos = withContext(Dispatchers.IO) {
+                    viewModel.getVideoCount() // implement in ViewModel
+                }
+
+                if (currentVideos == 0) {
+                    loadMediaFilesIntoDB()
+                } else {
+                    binding.progressBar.visibility = View.GONE
+                }
+            }
         } else {
             storagePermissionLauncher.launch(permission)
         }
     }
 
-    private fun loadMediaFiles() {
+    private fun loadMediaFilesIntoDB() {
         lifecycleScope.launch {
-
-            //show progress bar while loading
             binding.progressBar.visibility = View.VISIBLE
 
-            // Switch to the IO dispatcher for background work
             val fetchedVideos = withContext(Dispatchers.IO) {
                 fetchMediaFiles(requireContext())
             }
 
-            binding.progressBar.visibility = View.GONE
-            if (fetchedVideos.isEmpty()) {
-                binding.emptyView.visibility = View.VISIBLE
+            if (fetchedVideos.isNotEmpty()) {
+                viewModel.insertAllVideos(fetchedVideos)
             } else {
-                binding.videoRV.visibility = View.VISIBLE
-                videoList = fetchedVideos
-
-                Log.d("VideoList size", videoList.size.toString())
-                // add video list in adapter
-                videoAdapter = VideosAdapter(requireContext(), videoList, object :
-                    OptionsMenuClickListener {
-                    override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                        // handle video click here
-                        performOptionsMenuClick(position, anchorView)
-                    }
-                })
-                binding.videoRV.adapter = videoAdapter
+                binding.progressBar.visibility = View.GONE
+                binding.emptyView.visibility = View.VISIBLE
             }
         }
     }
@@ -289,7 +312,7 @@ class VideosFragment : Fragment() {
                 R.id.playVideo -> {
                     Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                        video.contentUri.toString(),
+                        video.contentUri,
                         video.title
                     )
                     findNavController().navigate(action)
@@ -297,6 +320,9 @@ class VideosFragment : Fragment() {
                 }
 
                 R.id.addToPrivate -> {
+                    viewModel.updateVideoIsPrivate(video.id, true)
+                    videoList.removeAt(position)
+                    videoAdapter.notifyItemRemoved(position)
                     Toast.makeText(requireContext(), "Add to private clicked", Toast.LENGTH_SHORT)
                         .show()
                     true
@@ -315,80 +341,28 @@ class VideosFragment : Fragment() {
         popupMenu.show()
     }
 
-    private fun deleteFileFromStorage(tempLang: Video) {
+    private fun deleteFileFromStorage(video: VideosModel) {
         try {
-            // For Android Q (API 29) and below — direct delete
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(tempLang.contentUri, null, null)
+                val rowsDeleted = requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
                 if (rowsDeleted > 0) {
-                    Toast.makeText(context, "File deleted successfully", Toast.LENGTH_SHORT).show()
-                    videoList.remove(tempLang)
+                    viewModel.deleteVideosByUri(video.contentUri.toString()) // also remove from DB
+                    videoList.remove(video)
                     videoAdapter.notifyDataSetChanged()
-                } else {
-                    Toast.makeText(context, "Failed to delete file", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "File deleted successfully", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                // Android 11+ (Scoped Storage) — user confirmation required
-                val collection = arrayListOf(tempLang.contentUri)
-                val pendingIntent = MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
+                val collection = arrayListOf(video.contentUri.toUri())
+                val pendingIntent =
+                    MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
                 val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
-                lastDeletedUri = tempLang.contentUri
+                lastDeletedUri = video.contentUri.toUri()
                 deleteRequestLauncher.launch(request)
             }
-        } catch (e: SecurityException) {
+        } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Permission denied to delete file", Toast.LENGTH_SHORT).show()
         }
     }
-
-
-//    private fun deleteVideoFromStorage(video: Video) {
-//        val resolver = requireContext().contentResolver
-//        try {
-//            val rowsDeleted = resolver.delete(video.contentUri, null, null)
-//            if (rowsDeleted > 0) {
-//                Toast.makeText(requireContext(), "Video deleted successfully", Toast.LENGTH_SHORT).show()
-//                // remove from list and update adapter if needed
-//                videoList.removeAll { it.contentUri == video.contentUri }
-//                videoAdapter.notifyDataSetChanged()
-//            } else {
-//                Toast.makeText(requireContext(), "Failed to delete video", Toast.LENGTH_SHORT).show()
-//            }
-//
-//        } catch (e: SecurityException) {
-//            // Handle scoped storage security (Android 10+)
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                val collection = arrayListOf(video.contentUri)
-//                try {
-//                    val pendingIntent = MediaStore.createDeleteRequest(resolver, collection)
-//                    val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
-//                    lastDeletedUri = video.contentUri
-//                    deleteRequestLauncher.launch(request)
-//                } catch (ex: IllegalArgumentException) {
-//                    // For non-media files, fallback manual delete
-//                    val file = File(getRealPathFromURI(video.contentUri))
-//                    if (file.exists() && file.delete()) {
-//                        videoList.removeAll { it.contentUri == video.contentUri }
-//                        videoAdapter.notifyDataSetChanged()
-//                        Toast.makeText(requireContext(), "File deleted manually", Toast.LENGTH_SHORT).show()
-//                    } else {
-//                        Toast.makeText(requireContext(), "Manual delete failed", Toast.LENGTH_SHORT).show()
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-//    private fun getRealPathFromURI(uri: Uri): String? {
-//        val projection = arrayOf(MediaStore.Video.Media.DATA)
-//        requireContext().contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-//            val columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-//            if (cursor.moveToFirst()) {
-//                return cursor.getString(columnIndex)
-//            }
-//        }
-//        return null
-//    }
 
     // search videos
     private fun searchVideos(query: String) {

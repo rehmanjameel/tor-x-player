@@ -9,14 +9,14 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.torx.torxplayer.R
-import com.torx.torxplayer.model.Video
+import com.torx.torxplayer.model.VideosModel
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.torx.torxplayer.OptionsMenuClickListener
 
-class VideosAdapter(val context: Context, var videos: MutableList<Video>,
-    private val onOptionsMenuClickListener: OptionsMenuClickListener):
+class VideosAdapter(val context: Context, var videos: MutableList<VideosModel>,
+                    private val onOptionsMenuClickListener: OptionsMenuClickListener):
     RecyclerView.Adapter<VideosAdapter.VideoViewHolder>() {
 
     override fun onCreateViewHolder(
@@ -57,7 +57,7 @@ class VideosAdapter(val context: Context, var videos: MutableList<Video>,
 
     }
 
-    fun filterList(filterList: MutableList<Video>) {
+    fun filterList(filterList: MutableList<VideosModel>) {
         videos = filterList
         notifyDataSetChanged()
     }
