@@ -100,12 +100,6 @@ class VideosFragment : Fragment() {
 
         })
 
-        val app = requireActivity().application
-        viewModel = ViewModelProvider(
-            requireActivity(),
-            ViewModelProvider.AndroidViewModelFactory.getInstance(app)
-        )[FilesViewModel::class.java]
-
         // Register the launcher for delete request
         deleteRequestLauncher =
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -346,7 +340,7 @@ class VideosFragment : Fragment() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
                 val rowsDeleted = requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
                 if (rowsDeleted > 0) {
-                    viewModel.deleteVideosByUri(video.contentUri.toString()) // also remove from DB
+                    viewModel.deleteVideosByUri(video.contentUri) // also remove from DB
                     videoList.remove(video)
                     videoAdapter.notifyDataSetChanged()
                     Toast.makeText(context, "File deleted successfully", Toast.LENGTH_SHORT).show()

@@ -27,6 +27,9 @@ interface FileDao {
     suspend fun insertAll(videos: MutableList<VideosModel>)
     @Query("SELECT COUNT(*) FROM video")
     suspend fun getVideoCount(): Int
+
+    @Query("SELECT COUNT(*) FROM audio")
+    suspend fun getAudioCount(): Int
     @Delete
     suspend fun deleteVideo(video: VideosModel)
 
@@ -70,8 +73,20 @@ interface FileDao {
     @Query("DELETE FROM audio WHERE id = :audioId")
     suspend fun deleteAudioById(audioId: Long)
 
+    @Query("DELETE FROM audio WHERE uri = :audioUri")
+    suspend fun deleteAudioByUri(audioUri: String)
+
     @Query("SELECT * FROM audio WHERE id = :audioId LIMIT 1")
     suspend fun getAudioById(audioId: Long): AudiosModel?
+
+    @Query("Update audio SET is_private = :isPrivate WHERE id = :audioId")
+    suspend fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean)
+
+    @Query("SELECT * FROM audio WHERE is_private = 1  Order by id DESC")
+    fun getPrivateAudio(): LiveData<MutableList<AudiosModel>>
+
+    @Query("SELECT * FROM audio WHERE is_private = 0  Order by id DESC")
+    fun getPublicAudio(): LiveData<MutableList<AudiosModel>>
 
     @Query("DELETE FROM audio")
     suspend fun clearAllAudios()

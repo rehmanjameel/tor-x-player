@@ -20,21 +20,27 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
     val allPublicVideos: LiveData<MutableList<VideosModel>>
     val allPrivateVideos: LiveData<MutableList<VideosModel>>
     val allAudios: LiveData<MutableList<AudiosModel>>
-    val videoDao = AppDatabase.getDatabase(application).fileDao()
+    val allPublicAudios: LiveData<MutableList<AudiosModel>>
+    val allPrivateAudios: LiveData<MutableList<AudiosModel>>
+    val filesDao = AppDatabase.getDatabase(application).fileDao()
 
     init {
-        repository = FileRepository(videoDao)
+        repository = FileRepository(filesDao)
         allVideos = repository.allVideos
         allAudios = repository.allAudios
         allPublicVideos = repository.allPublicVideos
         allPrivateVideos = repository.allPrivateVideos
+        
+        allPublicAudios = repository.allPublicAudios
+        allPrivateAudios = repository.allPrivateAudios
     }
 
     fun insertVideo(video: VideosModel) = viewModelScope.launch(Dispatchers.IO) {
         repository.insertVideos(video)
     }
 
-    suspend fun getVideoCount(): Int = videoDao.getVideoCount()
+    suspend fun getVideoCount(): Int = filesDao.getVideoCount()
+    suspend fun getAudioCount(): Int = filesDao.getAudioCount()
 
     fun insertAllVideos(videos: MutableList<VideosModel>) = viewModelScope.launch(Dispatchers.IO) {
         repository.insertAllVideos(videos)
@@ -76,6 +82,14 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteAudiosById(id: Long) = viewModelScope.launch(Dispatchers.IO) {
         repository.deleteAudioById(id)
+    }
+
+    fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateAudioIsPrivate(audioId, isPrivate)
+    }
+
+    fun deleteAudiosByUri(uri: String) = viewModelScope.launch(Dispatchers.IO) {
+        repository.deleteAudioByUri(uri)
     }
 
     fun clearAllAudios() = viewModelScope.launch(Dispatchers.IO) {
