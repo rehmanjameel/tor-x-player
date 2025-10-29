@@ -59,6 +59,10 @@
                 android:layout_marginEnd="10dp"
                 android:visibility="gone"
                 app:endIconMode="clear_text"
+                app:boxStrokeColor="@color/white"
+                app:hintTextColor="@color/white"
+                app:cursorColor="@color/white"
+                app:boxStrokeWidth="1dp"
                 app:boxCornerRadiusBottomEnd="30dp"
                 app:boxCornerRadiusBottomStart="30dp"
                 app:boxCornerRadiusTopEnd="30dp"
@@ -68,7 +72,8 @@
                     android:id="@+id/searchTIET"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Search"/>
+                    android:hint="Search"
+                    android:textColor="@color/white"/>
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -96,6 +101,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
         android:visibility="gone"
+        android:layout_marginBottom="50dp"
         app:layout_constraintTop_toBottomOf="@id/topLayout"
         />
 

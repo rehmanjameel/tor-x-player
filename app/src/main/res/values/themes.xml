@@ -6,4 +6,8 @@
     </style>
 
     <style name="Theme.TorXplayer" parent="Base.Theme.TorXplayer" />
+
+    <style name="CardView." parent="CardView">
+        <item name="android:foreground">@drawable/card_bg_gradient</item>
+    </style>
 </resources>

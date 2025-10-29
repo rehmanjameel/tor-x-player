@@ -161,6 +161,8 @@ class VideosFragment : Fragment() {
                 performOptionsMenuClick(position, anchorView)
             }
         })
+        binding.videoRV.adapter = videoAdapter
+
         binding.videoRV.apply {
             layoutManager = GridLayoutManager(requireContext(), 1)
             adapter = videoAdapter

@@ -57,6 +57,12 @@ class AudiosFragment : Fragment() {
         // Inflate the layout for this fragment
         binding = FragmentAudiosBinding.inflate(inflater, container, false)
 
+        binding.audioRV.layoutManager = GridLayoutManager(
+            requireContext(), 1,
+            LinearLayoutManager.VERTICAL, false
+        )
+        binding.audioRV.setHasFixedSize(true)
+
         // Register the launcher for delete request
         deleteRequestLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -131,43 +137,34 @@ class AudiosFragment : Fragment() {
             requireActivity(),
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
-
-        checkMediaPermission()
-
-        // Observe database once here
-        viewModel.allPublicAudios.observe(viewLifecycleOwner) { audios ->
-            Log.e("audios list", "$audios")
-            audioList.clear()
-            audioList.addAll(audios)
-            setupRecyclerView()
-//            audioAdapter.notifyDataSetChanged()
-            if (audios.isNotEmpty()) {
-                binding.audioRV.visibility = View.VISIBLE
-                binding.emptyView.visibility = View.GONE
-                binding.progressBar.visibility = View.GONE
-            } else {
-                binding.audioRV.visibility = View.GONE
-                binding.emptyView.visibility = View.VISIBLE
-                binding.progressBar.visibility = View.GONE
-            }
-        }
-
-    }
-
-    private fun setupRecyclerView() {
         Log.e("audio list", "$audioList")
         audioAdapter = AudioAdapter(requireContext(), audioList, object : OptionsMenuClickListener {
             override fun onOptionsMenuClicked(position: Int, anchorView: View) {
                 performOptionsMenuClick(position, anchorView)
             }
         })
+        binding.audioRV.adapter = audioAdapter
 
-        binding.audioRV.layoutManager = GridLayoutManager(
-            requireContext(), 1,
-            LinearLayoutManager.VERTICAL, false
-        )
-        binding.audioRV.setHasFixedSize(true)
+        // Observe database once here
+        viewModel.allPublicAudios.observe(viewLifecycleOwner) { audios ->
+            Log.e("audios list", "$audios")
+            audioList.clear()
+            audioList.addAll(audios)
+
+            audioAdapter.notifyDataSetChanged()
+            if (audios.isNotEmpty()) {
+                binding.audioRV.visibility = View.VISIBLE
+                binding.emptyView.visibility = View.GONE
+            } else {
+                binding.audioRV.visibility = View.GONE
+                binding.emptyView.visibility = View.VISIBLE
+            }
+            binding.progressBar.visibility = View.GONE
+        }
+        checkMediaPermission()
+
     }
+
     // fetch audio files from the mobile
     private fun fetchAudioFiles(context: Context): MutableList<AudiosModel> {
         val audioList = mutableListOf<AudiosModel>()
@@ -253,9 +250,7 @@ class AudiosFragment : Fragment() {
     private val storagePermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                audioList = fetchAudioFiles(requireContext())
-                setupRecyclerView()
-
+                loadMediaFilesIntoDB()
             } else {
                 Toast.makeText(requireContext(), "Permission Denied", Toast.LENGTH_SHORT).show()
             }
@@ -300,8 +295,12 @@ class AudiosFragment : Fragment() {
 
             if (fetchedAudios.isNotEmpty()) {
                 viewModel.insertAllAudios(fetchedAudios)
-                setupRecyclerView()
 
+
+//                setupRecyclerView()
+                binding.progressBar.visibility = View.GONE
+                binding.emptyView.visibility = View.GONE
+                binding.audioRV.visibility = View.VISIBLE
             } else {
                 binding.progressBar.visibility = View.GONE
                 binding.emptyView.visibility = View.VISIBLE

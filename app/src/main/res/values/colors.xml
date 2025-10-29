@@ -7,6 +7,8 @@
     <color name="card_bg">#232323</color>
     <color name="primary">#FF5722</color>
     <color name="red">#F31221</color>
+    <color name="red_light">#9D0812</color>
     <color name="gray">#9E9E9E</color>
+    <color name="gray1">#888686</color>
 
 </resources>

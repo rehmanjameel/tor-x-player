@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import com.arconn.devicedesk.utils.AppGlobals
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentPrivateFilesBinding
@@ -37,9 +38,9 @@ class PrivateFilesFragment : Fragment() {
         isSettingPin = savedPin == null
 
         if (isSettingPin) {
-            binding.tvTitle.text = "Create PIN"
+            binding.pinTitle.text = "Create PIN"
         } else {
-            binding.tvTitle.text = "Enter PIN"
+            binding.pinTitle.text = "Enter PIN"
         }
 
         return binding.root
@@ -84,20 +85,25 @@ class PrivateFilesFragment : Fragment() {
                     tempPin = enteredPin
                     enteredPin = ""
                     isConfirmingPin = true
-                    binding.tvTitle.text = "Confirm PIN"
+                    binding.pinTitle.text = "Confirm PIN"
                     updateDots()
                 } else {
                     // Step 2: Confirm PIN
                     if (enteredPin == tempPin) {
                         appGlobals.saveString("user_pin", enteredPin)
                         Toast.makeText(requireContext(), "PIN set successfully!", Toast.LENGTH_SHORT).show()
+                        binding.privateLayout.visibility = View.VISIBLE
+                        binding.pinTitle.visibility = View.GONE
+                        binding.pinDotsLayout.visibility = View.GONE
+                        binding.buttonsLayout.visibility = View.GONE
+                        binding.privateFragment.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.black))
 //                        requireActivity().finish() // or open your private files activity
                     } else {
                         Toast.makeText(requireContext(), "PINs do not match!", Toast.LENGTH_SHORT).show()
                         enteredPin = ""
                         tempPin = ""
                         isConfirmingPin = false
-                        binding.tvTitle.text = "Create PIN"
+                        binding.pinTitle.text = "Create PIN"
                         updateDots()
                     }
                 }
@@ -106,6 +112,12 @@ class PrivateFilesFragment : Fragment() {
                 val savedPin = appGlobals.getValueString("user_pin")
                 if (enteredPin == savedPin) {
                     Toast.makeText(requireContext(), "Unlocked!", Toast.LENGTH_SHORT).show()
+                    binding.privateLayout.visibility = View.VISIBLE
+                    binding.pinTitle.visibility = View.GONE
+                    binding.pinDotsLayout.visibility = View.GONE
+                    binding.buttonsLayout.visibility = View.GONE
+                    binding.privateFragment.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.black))
+
 //                    requireActivity().finish() // or navigate to your main/private files activity
                 } else {
                     Toast.makeText(requireContext(), "Wrong PIN!", Toast.LENGTH_SHORT).show()
