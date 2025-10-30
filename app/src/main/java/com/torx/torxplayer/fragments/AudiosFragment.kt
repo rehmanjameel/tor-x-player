@@ -333,7 +333,7 @@ class AudiosFragment : Fragment() {
                     // in the same way you can implement others
                     R.id.addToPrivate -> {
                         // define
-                        viewModel.updateVideoIsPrivate(audio.id, true)
+                        viewModel.updateAudioIsPrivate(audio.id, true)
                         audioList.removeAt(position)
                         audioAdapter.notifyItemRemoved(position)
                         Toast.makeText(requireContext() , "Add to private clicked" , Toast.LENGTH_SHORT).show()

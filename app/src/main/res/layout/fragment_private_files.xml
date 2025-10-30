@@ -185,6 +185,7 @@
             app:layout_constraintEnd_toEndOf="parent">
 
                 <LinearLayout
+                    android:id="@+id/privateVideoCard"
                     android:layout_width="150dp"
                     android:layout_height="150dp"
                     android:orientation="vertical"
@@ -211,6 +212,7 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/privateAudioCard"
                     android:layout_width="150dp"
                     android:layout_height="150dp"
                     android:orientation="vertical"
@@ -247,5 +249,27 @@
 
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/emptyView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your videos will display here"
+        android:visibility="gone"
+        android:textColor="@color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
