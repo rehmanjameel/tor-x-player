@@ -14,6 +14,7 @@
             android:id="@+id/action_videosFragment_to_videoPlayerFragment"
             app:destination="@id/videoPlayerFragment" />
     </fragment>
+
     <fragment
         android:id="@+id/audiosFragment"
         android:name="com.torx.torxplayer.fragments.AudiosFragment"
@@ -27,7 +28,14 @@
         android:id="@+id/privateFilesFragment"
         android:name="com.torx.torxplayer.fragments.PrivateFilesFragment"
         android:label="fragment_private_files"
-        tools:layout="@layout/fragment_private_files" />
+        tools:layout="@layout/fragment_private_files" >
+        <action
+            android:id="@+id/action_privateFilesFragment_to_videoPlayerFragment"
+            app:destination="@id/videoPlayerFragment" />
+        <action
+            android:id="@+id/action_privateFilesFragment_to_audioPlayerFragment"
+            app:destination="@id/audioPlayerFragment" />
+    </fragment>
     <fragment
         android:id="@+id/videoPlayerFragment"
         android:name="com.torx.torxplayer.fragments.VideoPlayerFragment"
@@ -44,6 +52,14 @@
         <argument
             android:name="videoTitle"
             app:argType="string"/>
+
+        <argument
+            android:name="isPublic"
+            app:argType="boolean"/>
+
+        <action
+            android:id="@+id/action_videoPlayerFragment_to_privateFilesFragment"
+            app:destination="@id/privateFilesFragment" />
 
     </fragment>
     <fragment
@@ -62,5 +78,13 @@
         <argument
             android:name="audioTitle"
             app:argType="string"/>
+
+        <argument
+            android:name="isPublic"
+            app:argType="boolean"/>
+
+        <action
+            android:id="@+id/action_audioPlayerFragment_to_privateFilesFragment"
+            app:destination="@id/privateFilesFragment" />
     </fragment>
 </navigation>

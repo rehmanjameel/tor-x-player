@@ -65,7 +65,11 @@ class VideoPlayerFragment : Fragment() {
                         binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).performClick()
                     }
 
-                    findNavController().navigateUp()
+                    if (args.isPublic) {
+                        findNavController().navigateUp()
+                    } else {
+                        findNavController().navigate(R.id.action_videoPlayerFragment_to_privateFilesFragment)
+                    }
                 }
             }
         )

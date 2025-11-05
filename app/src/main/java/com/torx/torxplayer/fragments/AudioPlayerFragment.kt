@@ -1,5 +1,6 @@
 package com.torx.torxplayer.fragments
 
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -13,6 +14,8 @@ import androidx.navigation.fragment.navArgs
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentAudioPlayerBinding
 import androidx.core.net.toUri
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 
 class AudioPlayerFragment : Fragment() {
 
@@ -45,6 +48,21 @@ class AudioPlayerFragment : Fragment() {
         player?.setMediaItem(mediaItem)
         player?.prepare()
         player?.playWhenReady = true
+
+        player?.addListener(object : Player.Listener{
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                super.onMediaMetadataChanged(mediaMetadata)
+                val artworkData = mediaMetadata.artworkData
+                if (artworkData != null) {
+                    // Artwork exists — show it
+                    val bitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+                    binding.audioBackground.setImageBitmap(bitmap)
+                } else {
+                    // No artwork — use fallback image
+                    binding.audioBackground.setImageResource(R.drawable.audio_thumbnail)
+                }
+            }
+        })
     }
 
     override fun onStop() {

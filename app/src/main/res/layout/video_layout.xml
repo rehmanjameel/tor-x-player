@@ -20,7 +20,7 @@
                 android:id="@+id/thumbnail"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                android:src="@drawable/outline_video_library_24"
+                android:src="@drawable/baseline_video_library_24"
                 android:scaleType="fitXY"
                 android:layout_margin="10dp"
                 android:adjustViewBounds="true"

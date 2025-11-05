@@ -3,7 +3,7 @@
 
     <item
         android:title="Play"
-        android:id="@+id/playVideo"
+        android:id="@+id/play"
         android:orderInCategory="0"
         />
 
@@ -15,7 +15,7 @@
 
     <item
         android:title="Delete"
-        android:id="@+id/deleteVideo"
+        android:id="@+id/delete"
         android:orderInCategory="2"
         />
 </menu>

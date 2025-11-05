@@ -27,7 +27,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.VideosAdapter
@@ -37,7 +36,6 @@ import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 
 @RequiresApi(Build.VERSION_CODES.R)
@@ -305,11 +303,12 @@ class VideosFragment : Fragment() {
             val video = videoList[position]
 
             when (item.itemId) {
-                R.id.playVideo -> {
+                R.id.play -> {
                     Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri,
-                        video.title
+                        video.title,
+                        true
                     )
                     findNavController().navigate(action)
                     true
@@ -324,7 +323,7 @@ class VideosFragment : Fragment() {
                     true
                 }
 
-                R.id.deleteVideo -> {
+                R.id.delete -> {
                     deleteFileFromStorage(video)
 //                    Toast.makeText(requireContext(), "Deleted video", Toast.LENGTH_SHORT).show()
                     true

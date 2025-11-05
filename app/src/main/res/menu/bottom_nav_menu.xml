@@ -2,19 +2,19 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:title="Videos"
+        android:title="VIDEOS"
         android:id="@+id/videosFragment"
         android:orderInCategory="0"
-        android:icon="@drawable/outline_video_library_24" />
+        android:icon="@drawable/baseline_video_library_24" />
 
     <item
-        android:title="Audios"
+        android:title="AUDIOS"
         android:id="@+id/audiosFragment"
         android:orderInCategory="1"
-        android:icon="@drawable/outline_library_music_24" />
+        android:icon="@drawable/baseline_library_music_24" />
 
     <item
-        android:title="Private Files"
+        android:title="LOCK"
         android:id="@+id/privateFilesFragment"
         android:orderInCategory="2"
         android:icon="@drawable/outline_visibility_lock_24"/>

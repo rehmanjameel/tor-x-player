@@ -31,7 +31,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
-import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentAudiosBinding
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.viewmodel.FilesViewModel
@@ -322,9 +321,9 @@ class AudiosFragment : Fragment() {
 
                 when(item?.itemId){
 
-                    R.id.playVideo -> {
+                    R.id.play -> {
                         val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                            audio.uri, audio.title)
+                            audio.uri, audio.title, true)
                         findNavController().navigate(action)
 
                         // here are the logic to delete an item from the list
@@ -339,7 +338,7 @@ class AudiosFragment : Fragment() {
                         Toast.makeText(requireContext() , "Add to private clicked" , Toast.LENGTH_SHORT).show()
                         return true
                     }
-                    R.id.deleteVideo -> {
+                    R.id.delete -> {
                         // define
 
                         deleteFileFromStorage(audio)

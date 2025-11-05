@@ -36,13 +36,24 @@ class PrivateFilesFragment : Fragment() {
     private lateinit var binding: FragmentPrivateFilesBinding
 
     private lateinit var dots: List<View>
-//    private lateinit var title: TextView
     private var enteredPin = ""
     private var tempPin = ""
     private var isSettingPin = false
     private var isConfirmingPin = false
     private val appGlobals = AppGlobals()
     private var isVideoPrivate = false
+
+    // private videos
+    private lateinit var videoAdapter: VideosAdapter
+    private var videoList = mutableListOf<VideosModel>()
+
+    private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
+    private var lastDeletedUri: Uri? = null
+    private lateinit var viewModel : FilesViewModel
+
+    // private audios
+    private lateinit var audioAdapter: AudioAdapter
+    private var audioList = mutableListOf<AudiosModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -89,7 +100,7 @@ class PrivateFilesFragment : Fragment() {
             binding.cardsLayout.visibility = View.VISIBLE
             binding.privateFilesRV.visibility = View.GONE
             binding.title.text = "Private Files"
-
+            binding.backArrow.visibility = View.GONE
         }
     }
 
@@ -140,7 +151,6 @@ class PrivateFilesFragment : Fragment() {
                         binding.pinDotsLayout.visibility = View.GONE
                         binding.buttonsLayout.visibility = View.GONE
                         binding.privateFragment.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.black))
-//                        requireActivity().finish() // or open your private files activity
                     } else {
                         Toast.makeText(requireContext(), "PINs do not match!", Toast.LENGTH_SHORT).show()
                         enteredPin = ""
@@ -161,7 +171,6 @@ class PrivateFilesFragment : Fragment() {
                     binding.buttonsLayout.visibility = View.GONE
                     binding.privateFragment.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.black))
 
-//                    requireActivity().finish() // or navigate to your main/private files activity
                 } else {
                     Toast.makeText(requireContext(), "Wrong PIN!", Toast.LENGTH_SHORT).show()
                     enteredPin = ""
@@ -187,24 +196,17 @@ class PrivateFilesFragment : Fragment() {
         }
     }
 
-    // private videos
-    private lateinit var videoAdapter: VideosAdapter
-    private var videoList = mutableListOf<VideosModel>()
-
-    private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
-    private var lastDeletedUri: Uri? = null
-    private lateinit var viewModel : FilesViewModel
-
+    // videos
     private fun openPrivateVideos() {
         binding.privateFilesRV.visibility = View.VISIBLE
         binding.cardsLayout.visibility = View.GONE
         binding.title.text = "Private Videos"
+        binding.backArrow.visibility = View.VISIBLE
 
         // Observe database once here
         viewModel.allPrivateVideos.observe(viewLifecycleOwner) { videos ->
             videoList.clear()
             videoList.addAll(videos)
-//            videoAdapter.notifyDataSetChanged()
             if (videos.isNotEmpty()) {
                 binding.emptyView.visibility = View.GONE
                 binding.progressBar.visibility = View.GONE
@@ -237,11 +239,12 @@ class PrivateFilesFragment : Fragment() {
             val video = videoList[position]
 
             when (item.itemId) {
-                R.id.playVideo -> {
+                R.id.play -> {
                     Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                    val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
                         video.contentUri,
-                        video.title
+                        video.title,
+                        false
                     )
                     findNavController().navigate(action)
                     true
@@ -256,9 +259,8 @@ class PrivateFilesFragment : Fragment() {
                     true
                 }
 
-                R.id.deleteVideo -> {
+                R.id.delete -> {
                     deleteFileFromStorage(video)
-//                    Toast.makeText(requireContext(), "Deleted video", Toast.LENGTH_SHORT).show()
                     true
                 }
 
@@ -302,13 +304,12 @@ class PrivateFilesFragment : Fragment() {
     }
 
     // audio
-    private lateinit var audioAdapter: AudioAdapter
-    private var audioList = mutableListOf<AudiosModel>()
 
     private fun openPrivateAudios() {
         binding.title.text = "Private Audios"
         binding.cardsLayout.visibility = View.GONE
         binding.privateFilesRV.visibility = View.VISIBLE
+        binding.backArrow.visibility = View.VISIBLE
 
         // Observe database once here
         viewModel.allPrivateAudios.observe(viewLifecycleOwner) { audios ->
@@ -355,9 +356,9 @@ class PrivateFilesFragment : Fragment() {
 
                 when(item?.itemId){
 
-                    R.id.playVideo -> {
-                        val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                            audio.uri, audio.title)
+                    R.id.play -> {
+                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
+                            audio.uri, audio.title, false)
                         findNavController().navigate(action)
 
                         // here are the logic to delete an item from the list
@@ -372,7 +373,7 @@ class PrivateFilesFragment : Fragment() {
                         Toast.makeText(requireContext() , "Add to private clicked" , Toast.LENGTH_SHORT).show()
                         return true
                     }
-                    R.id.deleteVideo -> {
+                    R.id.delete -> {
                         // define
 
                         deleteAudioFileFromStorage(audio)

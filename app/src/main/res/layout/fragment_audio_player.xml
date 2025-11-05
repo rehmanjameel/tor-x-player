@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".fragments.AudioPlayerFragment">
+
+    <!-- Background image -->
+    <ImageView
+        android:id="@+id/audioBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/audio_thumbnail" />
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
@@ -15,6 +23,8 @@
         app:show_shuffle_button="false"
         app:show_subtitle_button="false"
         app:use_artwork="true"
-        app:show_buffering="when_playing" />
+        app:show_buffering="when_playing"
+        app:resize_mode="fill"
+        android:background="@android:color/transparent"/>
 
-</RelativeLayout>
+</FrameLayout>

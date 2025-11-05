@@ -31,6 +31,7 @@
         app:itemRippleColor="@color/bottom_nav_ripple"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav_menu"
+        app:itemActiveIndicatorStyle="@null"
         app:layout_constraintTop_toBottomOf="@id/navHostFragment"
         app:layout_constraintBottom_toBottomOf="parent"/>
 

@@ -46,8 +46,8 @@ class VideosAdapter(val context: Context, var videos: MutableList<VideosModel>,
             .load(video.contentUri)
             .frame(1000000)
             .transform(CenterCrop(), RoundedCorners(20))
-            .placeholder(R.drawable.outline_video_library_24)
-            .error(R.drawable.outline_video_library_24)
+            .placeholder(R.drawable.baseline_video_library_24)
+            .error(R.drawable.baseline_video_library_24)
             .into(holder.thumbnail)
 
 

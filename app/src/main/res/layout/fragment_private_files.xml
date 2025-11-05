@@ -164,6 +164,7 @@
                 android:src="@drawable/outline_keyboard_backspace_24"
                 android:layout_marginTop="30dp"
                 android:padding="10dp"
+                android:visibility="gone"
                 android:layout_centerVertical="true"
                 android:layout_marginEnd="10dp"
                 android:layout_alignParentStart="true"
@@ -245,6 +246,7 @@
             android:id="@+id/privateFilesRV"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingBottom="90dp"
             android:visibility="gone"/>
 
     </LinearLayout>
