@@ -23,20 +23,20 @@
                 android:id="@+id/title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Audios"
+                android:text="@string/app_name"
                 android:padding="10dp"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="@color/white"
-                android:layout_marginTop="30dp"
-                android:layout_marginStart="10dp"/>
+                android:layout_marginTop="0dp"
+                android:layout_marginStart="0dp"/>
 
             <ImageView
                 android:id="@+id/backArrow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/outline_keyboard_backspace_24"
-                android:layout_marginTop="30dp"
+                android:layout_marginTop="10dp"
                 android:padding="10dp"
                 android:visibility="gone"
                 android:layout_marginEnd="10dp"
@@ -48,50 +48,37 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_toEndOf="@id/titleLayout">
+            android:layout_below="@id/titleLayout">
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/searchTIL"
+            <EditText
+                android:id="@+id/searchTIET"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:layout_marginStart="10dp"
+                android:layout_height="40dp"
+                android:autofillHints="username"
+                android:hint="search audio"
                 android:layout_marginEnd="10dp"
-                android:visibility="gone"
-                app:endIconMode="clear_text"
-                app:boxStrokeColor="@color/white"
-                app:hintTextColor="@color/white"
-                app:cursorColor="@color/white"
-                app:boxStrokeWidth="1dp"
-                app:boxCornerRadiusBottomEnd="30dp"
-                app:boxCornerRadiusBottomStart="30dp"
-                app:boxCornerRadiusTopEnd="30dp"
-                app:boxCornerRadiusTopStart="30dp">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/searchTIET"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Search"
-                    android:textColor="@color/white"/>
-
-            </com.google.android.material.textfield.TextInputLayout>
+                android:padding="10dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/et_bg"
+                android:drawableStart="@drawable/outline_search_24"
+                android:inputType="text"
+                android:textColor="@color/black"/>
 
             <ImageView
-                android:id="@+id/searchIcon"
+                android:id="@+id/mainMenu"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:src="@drawable/outline_search_24"
-                android:layout_marginTop="30dp"
+                android:src="@drawable/baseline_more_vert_24"
+                android:layout_marginTop="0dp"
                 android:padding="10dp"
+                android:visibility="visible"
                 android:layout_alignParentEnd="true"
                 android:layout_marginEnd="10dp"
-                app:tint="@color/white"
+                app:tint="@color/black"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"/>
 
         </RelativeLayout>
-
 
     </RelativeLayout>
 

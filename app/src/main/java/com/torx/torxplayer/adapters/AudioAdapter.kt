@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.google.android.material.card.MaterialCardView
 import com.torx.torxplayer.R
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.OptionsMenuClickListener
@@ -86,6 +87,10 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
         holder.moreOptions.setOnClickListener {
             optionsMenuClickListener.onOptionsMenuClicked(position, it)
         }
+
+        holder.audioCard.setOnClickListener {
+            optionsMenuClickListener.onItemClick(position)
+        }
     }
 
     fun filterList(filterList: MutableList<AudiosModel>) {
@@ -103,6 +108,7 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
         val moreOptions: ImageView = itemView.findViewById(R.id.audioMoreOptionsIcon)
         val duration: TextView = itemView.findViewById(R.id.audioDuration)
         val size: TextView = itemView.findViewById(R.id.audioSize)
+        val audioCard: MaterialCardView = itemView.findViewById(R.id.audioCardLayout)
     }
 
     private fun formatVideoDuration(durationMillis: Long): String {

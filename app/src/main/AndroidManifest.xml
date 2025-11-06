@@ -22,8 +22,11 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:windowOptOutEdgeToEdgeEnforcement="true"
+            android:windowSoftInputMode="adjustNothing"
+            android:resizeableActivity="true"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            >
+            tools:targetApi="35">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

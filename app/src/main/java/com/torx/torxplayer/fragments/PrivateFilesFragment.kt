@@ -215,6 +215,16 @@ class PrivateFilesFragment : Fragment() {
                     override fun onOptionsMenuClicked(position: Int, anchorView: View) {
                         performOptionsMenuClick(position, anchorView)
                     }
+
+                    override fun onItemClick(position: Int) {
+                        val video = videoList[position]
+                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
+                            video.contentUri,
+                            video.title,
+                            false
+                        )
+                        findNavController().navigate(action)
+                    }
                 })
                 binding.privateFilesRV.apply {
                     layoutManager = GridLayoutManager(requireContext(), 1)
@@ -239,16 +249,16 @@ class PrivateFilesFragment : Fragment() {
             val video = videoList[position]
 
             when (item.itemId) {
-                R.id.play -> {
-                    Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
-                    val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
-                        video.contentUri,
-                        video.title,
-                        false
-                    )
-                    findNavController().navigate(action)
-                    true
-                }
+//                R.id.play -> {
+//                    Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
+//                    val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
+//                        video.contentUri,
+//                        video.title,
+//                        false
+//                    )
+//                    findNavController().navigate(action)
+//                    true
+//                }
 
                 R.id.addToPrivate -> {
                     viewModel.updateVideoIsPrivate(video.id, true)
@@ -327,6 +337,13 @@ class PrivateFilesFragment : Fragment() {
                     override fun onOptionsMenuClicked(position: Int, anchorView: View) {
                         performAudioOptionsMenuClick(position, anchorView)
                     }
+
+                    override fun onItemClick(position: Int) {
+                        val audio = audioList[position]
+                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
+                            audio.uri, audio.title, false)
+                        findNavController().navigate(action)
+                    }
                 })
                 binding.privateFilesRV.apply {
                     layoutManager = GridLayoutManager(requireContext(), 1)
@@ -356,14 +373,14 @@ class PrivateFilesFragment : Fragment() {
 
                 when(item?.itemId){
 
-                    R.id.play -> {
-                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
-                            audio.uri, audio.title, false)
-                        findNavController().navigate(action)
-
-                        // here are the logic to delete an item from the list
-
-                    }
+//                    R.id.play -> {
+//                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
+//                            audio.uri, audio.title, false)
+//                        findNavController().navigate(action)
+//
+//                        // here are the logic to delete an item from the list
+//
+//                    }
                     // in the same way you can implement others
                     R.id.addToPrivate -> {
                         // define

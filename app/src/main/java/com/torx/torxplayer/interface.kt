@@ -6,4 +6,6 @@ import android.view.View
 // so that we can handle data most effectively in MainActivity.kt
 interface OptionsMenuClickListener {
     fun onOptionsMenuClicked(position: Int, anchorView: View)
+    fun onItemClick(position: Int)
+
 }

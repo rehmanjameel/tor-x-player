@@ -78,23 +78,16 @@ class AudiosFragment : Fragment() {
         }
 
 
-        binding.searchIcon.setOnClickListener {
-            binding.searchTIL.visibility = View.VISIBLE
-            binding.backArrow.visibility = View.VISIBLE
-            binding.title.visibility = View.GONE
-            binding.searchIcon.visibility = View.GONE
 
-            binding.searchTIET.requestFocus()
-        }
 
         binding.backArrow.setOnClickListener {
-            binding.searchTIL.visibility = View.GONE
-            binding.backArrow.visibility = View.GONE
-            binding.title.visibility = View.VISIBLE
-            binding.searchIcon.visibility = View.VISIBLE
-
-            binding.searchTIET.clearFocus()
-            binding.searchTIET.text?.clear()
+//            binding.searchTIL.visibility = View.GONE
+//            binding.backArrow.visibility = View.GONE
+//            binding.title.visibility = View.VISIBLE
+//            binding.searchIcon.visibility = View.VISIBLE
+//
+//            binding.searchTIET.clearFocus()
+//            binding.searchTIET.text?.clear()
         }
 
         // search audios
@@ -141,6 +134,13 @@ class AudiosFragment : Fragment() {
             override fun onOptionsMenuClicked(position: Int, anchorView: View) {
                 performOptionsMenuClick(position, anchorView)
             }
+
+            override fun onItemClick(position: Int) {
+                val audio = audioList[position]
+                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+                    audio.uri, audio.title, true)
+                findNavController().navigate(action)
+            }
         })
         binding.audioRV.adapter = audioAdapter
 
@@ -162,8 +162,39 @@ class AudiosFragment : Fragment() {
         }
         checkMediaPermission()
 
+        binding.mainMenu.setOnClickListener {
+            showMainMenu(it)
+        }
+
     }
 
+    private fun showMainMenu(view: View) {
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.inflate(R.menu.main_menu)
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.share -> {
+                    Toast.makeText(requireContext(), "Share coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                R.id.rateUs -> {
+                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                R.id.other -> {
+                    Toast.makeText(requireContext(), "Other coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                else -> false
+            }
+        }
+
+        popupMenu.show()
+    }
     // fetch audio files from the mobile
     private fun fetchAudioFiles(context: Context): MutableList<AudiosModel> {
         val audioList = mutableListOf<AudiosModel>()
@@ -321,14 +352,14 @@ class AudiosFragment : Fragment() {
 
                 when(item?.itemId){
 
-                    R.id.play -> {
-                        val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                            audio.uri, audio.title, true)
-                        findNavController().navigate(action)
-
-                        // here are the logic to delete an item from the list
-
-                    }
+//                    R.id.play -> {
+//                        val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+//                            audio.uri, audio.title, true)
+//                        findNavController().navigate(action)
+//
+//                        // here are the logic to delete an item from the list
+//
+//                    }
                     // in the same way you can implement others
                     R.id.addToPrivate -> {
                         // define

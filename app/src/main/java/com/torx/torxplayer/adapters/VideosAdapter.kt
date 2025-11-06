@@ -13,10 +13,13 @@ import com.torx.torxplayer.model.VideosModel
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.google.android.material.card.MaterialCardView
 import com.torx.torxplayer.OptionsMenuClickListener
 
-class VideosAdapter(val context: Context, var videos: MutableList<VideosModel>,
-                    private val onOptionsMenuClickListener: OptionsMenuClickListener):
+class VideosAdapter(
+    val context: Context, var videos: MutableList<VideosModel>,
+    private val onOptionsMenuClickListener: OptionsMenuClickListener
+) :
     RecyclerView.Adapter<VideosAdapter.VideoViewHolder>() {
 
     override fun onCreateViewHolder(
@@ -55,6 +58,10 @@ class VideosAdapter(val context: Context, var videos: MutableList<VideosModel>,
             onOptionsMenuClickListener.onOptionsMenuClicked(position, it)
         }
 
+        holder.cardItem.setOnClickListener {
+            onOptionsMenuClickListener.onItemClick(position)
+        }
+
     }
 
     fun filterList(filterList: MutableList<VideosModel>) {
@@ -66,7 +73,7 @@ class VideosAdapter(val context: Context, var videos: MutableList<VideosModel>,
         return videos.size
     }
 
-    class VideoViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
+    class VideoViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
         val title: TextView = itemView.findViewById(R.id.videoTitle)
         val thumbnail: ImageView = itemView.findViewById(R.id.thumbnail)
@@ -75,18 +82,19 @@ class VideosAdapter(val context: Context, var videos: MutableList<VideosModel>,
 
         val duration: TextView = itemView.findViewById(R.id.videoDuration)
         val size: TextView = itemView.findViewById(R.id.videoSize)
+        val cardItem: MaterialCardView = itemView.findViewById(R.id.videoCardLayout)
 
     }
 
     private fun formatVideoDuration(durationMillis: Long): String {
-        val totalSeconds = durationMillis/1000
-        val minutes = totalSeconds/60
-        val seconds = totalSeconds%60
+        val totalSeconds = durationMillis / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
         return String.format("%02d:%02d", minutes, seconds)
     }
 
     private fun convertBytesToMB(bytes: Long): Double {
-        val mb = bytes /(1024.0 * 1024.0)
+        val mb = bytes / (1024.0 * 1024.0)
         val decimalFormat = DecimalFormat("#.##")
         return decimalFormat.format(mb).toDouble()
     }

@@ -59,23 +59,16 @@ class VideosFragment : Fragment() {
         // initialize the recyclerview
 //        setupRecyclerView()
 
-        binding.searchIcon.setOnClickListener {
-            binding.searchTIL.visibility = View.VISIBLE
-            binding.backArrow.visibility = View.VISIBLE
-            binding.title.visibility = View.GONE
-            binding.searchIcon.visibility = View.GONE
 
-            binding.searchTIET.requestFocus()
-        }
 
         binding.backArrow.setOnClickListener {
-            binding.searchTIL.visibility = View.GONE
-            binding.backArrow.visibility = View.GONE
-            binding.title.visibility = View.VISIBLE
-            binding.searchIcon.visibility = View.VISIBLE
-
-            binding.searchTIET.clearFocus()
-            binding.searchTIET.text?.clear()
+//            binding.searchTIL.visibility = View.GONE
+//            binding.backArrow.visibility = View.GONE
+//            binding.title.visibility = View.VISIBLE
+//            binding.searchIcon.visibility = View.VISIBLE
+//
+//            binding.searchTIET.clearFocus()
+//            binding.searchTIET.text?.clear()
         }
 
         // search videos
@@ -149,7 +142,46 @@ class VideosFragment : Fragment() {
             }
         }
 
+        binding.mainMenu.setOnClickListener { it ->
+//            binding.searchTIL.visibility = View.VISIBLE
+//            binding.backArrow.visibility = View.VISIBLE
+//            binding.title.visibility = View.GONE
+//            binding.searchIcon.visibility = View.GONE
+//
+//            binding.searchTIET.requestFocus()
+
+            showMainMenu(it)
+        }
+
         checkMediaPermission()
+    }
+
+    private fun showMainMenu(view: View) {
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.inflate(R.menu.main_menu)
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.share -> {
+                    Toast.makeText(requireContext(), "Share coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                R.id.rateUs -> {
+                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                R.id.other -> {
+                    Toast.makeText(requireContext(), "Other coming soon", Toast.LENGTH_SHORT).show()
+                    true
+                }
+
+                else -> false
+            }
+        }
+
+        popupMenu.show()
     }
 
     private fun setupRecyclerView() {
@@ -157,6 +189,16 @@ class VideosFragment : Fragment() {
         videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
             override fun onOptionsMenuClicked(position: Int, anchorView: View) {
                 performOptionsMenuClick(position, anchorView)
+            }
+
+            override fun onItemClick(position: Int) {
+                val video = videoList[position]
+                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                        video.contentUri,
+                        video.title,
+                        true
+                    )
+                    findNavController().navigate(action)
             }
         })
         binding.videoRV.adapter = videoAdapter
@@ -303,16 +345,16 @@ class VideosFragment : Fragment() {
             val video = videoList[position]
 
             when (item.itemId) {
-                R.id.play -> {
-                    Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                        video.contentUri,
-                        video.title,
-                        true
-                    )
-                    findNavController().navigate(action)
-                    true
-                }
+//                R.id.play -> {
+//                    Toast.makeText(requireContext(), video.title, Toast.LENGTH_SHORT).show()
+//                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+//                        video.contentUri,
+//                        video.title,
+//                        true
+//                    )
+//                    findNavController().navigate(action)
+//                    true
+//                }
 
                 R.id.addToPrivate -> {
                     viewModel.updateVideoIsPrivate(video.id, true)
