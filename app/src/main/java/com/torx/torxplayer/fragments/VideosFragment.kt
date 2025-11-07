@@ -27,6 +27,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.VideosAdapter
@@ -47,7 +48,7 @@ class VideosFragment : Fragment() {
 
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private var lastDeletedUri: Uri? = null
-    private lateinit var viewModel : FilesViewModel
+    private lateinit var viewModel: FilesViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -59,6 +60,11 @@ class VideosFragment : Fragment() {
         // initialize the recyclerview
 //        setupRecyclerView()
 
+        binding.videoRV.layoutManager = GridLayoutManager(
+            requireContext(), 1,
+            LinearLayoutManager.VERTICAL, false
+        )
+        binding.videoRV.setHasFixedSize(true)
 
 
         binding.backArrow.setOnClickListener {
@@ -103,7 +109,7 @@ class VideosFragment : Fragment() {
                     ).show()
                     lastDeletedUri.let { deletedUri ->
                         viewModel.deleteVideosByUri(deletedUri.toString()) // also remove from DB
-                        videoList.removeAll { it.contentUri ==  deletedUri.toString()}
+                        videoList.removeAll { it.contentUri == deletedUri.toString() }
                         videoAdapter.notifyDataSetChanged()
                     }
                     // You can refresh your list or remove the item here if not already done
@@ -124,7 +130,24 @@ class VideosFragment : Fragment() {
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
 
-        setupRecyclerView()
+        Log.e("video list", "$videoList")
+        videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                performOptionsMenuClick(position, anchorView)
+            }
+
+            override fun onItemClick(position: Int) {
+                val video = videoList[position]
+                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                    video.contentUri,
+                    video.title,
+                    true
+                )
+                findNavController().navigate(action)
+            }
+        })
+        binding.videoRV.adapter = videoAdapter
+//        setupRecyclerView()
 
         // Observe database once here
         viewModel.allPublicVideos.observe(viewLifecycleOwner) { videos ->
@@ -141,19 +164,12 @@ class VideosFragment : Fragment() {
                 binding.progressBar.visibility = View.GONE
             }
         }
+        checkMediaPermission()
 
         binding.mainMenu.setOnClickListener { it ->
-//            binding.searchTIL.visibility = View.VISIBLE
-//            binding.backArrow.visibility = View.VISIBLE
-//            binding.title.visibility = View.GONE
-//            binding.searchIcon.visibility = View.GONE
-//
-//            binding.searchTIET.requestFocus()
-
             showMainMenu(it)
         }
 
-        checkMediaPermission()
     }
 
     private fun showMainMenu(view: View) {
@@ -168,7 +184,8 @@ class VideosFragment : Fragment() {
                 }
 
                 R.id.rateUs -> {
-                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT)
+                        .show()
                     true
                 }
 
@@ -186,28 +203,25 @@ class VideosFragment : Fragment() {
 
     private fun setupRecyclerView() {
         Log.e("video list", "$videoList")
-        videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
-            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                performOptionsMenuClick(position, anchorView)
-            }
+        videoAdapter =
+            VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                    performOptionsMenuClick(position, anchorView)
+                }
 
-            override fun onItemClick(position: Int) {
-                val video = videoList[position]
-                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                override fun onItemClick(position: Int) {
+                    val video = videoList[position]
+                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri,
                         video.title,
                         true
                     )
                     findNavController().navigate(action)
-            }
-        })
+                }
+            })
         binding.videoRV.adapter = videoAdapter
 
-        binding.videoRV.apply {
-            layoutManager = GridLayoutManager(requireContext(), 1)
-            adapter = videoAdapter
-            setHasFixedSize(true)
-        }
+
     }
 
 
@@ -215,7 +229,8 @@ class VideosFragment : Fragment() {
     private val storagePermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                videoList = fetchMediaFiles(requireContext())
+                loadMediaFilesIntoDB()
+//                videoList = fetchMediaFiles(requireContext())
             } else {
                 Toast.makeText(requireContext(), "Permission Denied", Toast.LENGTH_SHORT).show()
             }
@@ -330,7 +345,12 @@ class VideosFragment : Fragment() {
 
             if (fetchedVideos.isNotEmpty()) {
                 viewModel.insertAllVideos(fetchedVideos)
+                binding.progressBar.visibility = View.GONE
+                binding.emptyView.visibility = View.GONE
+                binding.videoRV.visibility = View.VISIBLE
+                Log.e("video list1", "${fetchedVideos.isNotEmpty()}")
             } else {
+                Log.e("video list2", "${fetchedVideos}")
                 binding.progressBar.visibility = View.GONE
                 binding.emptyView.visibility = View.VISIBLE
             }
@@ -381,7 +401,8 @@ class VideosFragment : Fragment() {
     private fun deleteFileFromStorage(video: VideosModel) {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
+                val rowsDeleted =
+                    requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
                 if (rowsDeleted > 0) {
                     viewModel.deleteVideosByUri(video.contentUri) // also remove from DB
                     videoList.remove(video)

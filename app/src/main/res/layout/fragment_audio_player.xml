@@ -1,18 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".fragments.AudioPlayerFragment">
 
-    <!-- Background image -->
-    <ImageView
-        android:id="@+id/audioBackground"
+    <RelativeLayout
+        android:id="@+id/topLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:src="@drawable/audio_thumbnail" />
+        android:layout_height="wrap_content"
+        android:background="@color/black"
+        android:padding="10dp">
+
+        <ImageView
+            android:id="@+id/backArrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scaleType="centerCrop"
+            android:src="@drawable/outline_keyboard_backspace_24" />
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="title"
+            android:textColor="@color/white"
+            android:layout_marginStart="10dp"
+            android:layout_toEndOf="@id/backArrow"/>
+
+    </RelativeLayout>
+    <!-- Background image -->
+<!--    <ImageView-->
+<!--        android:id="@+id/audioBackground"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        android:scaleType="centerCrop"-->
+<!--        android:src="@drawable/audio_thumbnail" />-->
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
@@ -20,11 +44,13 @@
         android:layout_height="match_parent"
         android:layout_gravity="center"
         android:keepScreenOn="true"
+        android:layout_below="@id/topLayout"
         app:show_shuffle_button="false"
         app:show_subtitle_button="false"
         app:use_artwork="true"
+        app:default_artwork="@drawable/audio_thumbnail"
         app:show_buffering="when_playing"
         app:resize_mode="fill"
         android:background="@android:color/transparent"/>
 
-</FrameLayout>
+</RelativeLayout>

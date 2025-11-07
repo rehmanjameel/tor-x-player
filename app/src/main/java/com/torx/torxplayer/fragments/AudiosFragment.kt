@@ -77,17 +77,7 @@ class AudiosFragment : Fragment() {
             }
         }
 
-
-
-
         binding.backArrow.setOnClickListener {
-//            binding.searchTIL.visibility = View.GONE
-//            binding.backArrow.visibility = View.GONE
-//            binding.title.visibility = View.VISIBLE
-//            binding.searchIcon.visibility = View.VISIBLE
-//
-//            binding.searchTIET.clearFocus()
-//            binding.searchTIET.text?.clear()
         }
 
         // search audios
@@ -326,8 +316,6 @@ class AudiosFragment : Fragment() {
             if (fetchedAudios.isNotEmpty()) {
                 viewModel.insertAllAudios(fetchedAudios)
 
-
-//                setupRecyclerView()
                 binding.progressBar.visibility = View.GONE
                 binding.emptyView.visibility = View.GONE
                 binding.audioRV.visibility = View.VISIBLE

@@ -99,8 +99,9 @@ class PrivateFilesFragment : Fragment() {
         binding.backArrow.setOnClickListener {
             binding.cardsLayout.visibility = View.VISIBLE
             binding.privateFilesRV.visibility = View.GONE
-            binding.title.text = "Private Files"
+            binding.title.text = getString(R.string.app_name)
             binding.backArrow.visibility = View.GONE
+            binding.emptyView.visibility = View.GONE
         }
     }
 
