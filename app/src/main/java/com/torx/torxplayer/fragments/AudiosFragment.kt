@@ -3,6 +3,7 @@ package com.torx.torxplayer.fragments
 import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -77,7 +78,14 @@ class AudiosFragment : Fragment() {
             }
         }
 
-        binding.backArrow.setOnClickListener {
+        binding.donation.setOnClickListener {
+            val url = "https://donate.wfp.org/1243/donation/regular?campaign=4574&_ga=2.233279257.602488721.1762603852-1327722293.1762603852&_gac=1.187330266.1762603852.CjwKCAiA8bvIBhBJEiwAu5ayrDyDEAP5YnuLh0lhI8kMRsprikeoVM9kdNvpFIRbTpmzfzSD6wKZ2RoCojcQAvD_BwE"
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(requireActivity(), "No browser found to open the link", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // search audios
