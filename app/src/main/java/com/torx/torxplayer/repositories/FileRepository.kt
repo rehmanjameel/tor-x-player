@@ -54,6 +54,8 @@ class FileRepository(private val fileDao: FileDao) {
     val allPublicAudios: LiveData<MutableList<AudiosModel>> = fileDao.getPublicAudio()
     val allPrivateAudios: LiveData<MutableList<AudiosModel>> = fileDao.getPrivateAudio()
 
+    val allUrisLive: LiveData<List<String>> = fileDao.getAllUrisLive()
+
     suspend fun insertAudio(audio: AudiosModel) {
         fileDao.insertAudio(audio)
     }
@@ -77,6 +79,7 @@ class FileRepository(private val fileDao: FileDao) {
     suspend fun deleteAudioByUri(uri: String) {
         fileDao.deleteAudioByUri(uri)
     }
+
 
     suspend fun getAudioById(id: Long): AudiosModel? {
         return fileDao.getAudioById(id)

@@ -128,7 +128,8 @@ class AudiosFragment : Fragment() {
             override fun onItemClick(position: Int) {
                 val audio = audioList[position]
                 val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                    audio.uri, audio.title, true)
+                    audio.uri, audioList.map { it.title }.toTypedArray(), true, audioList.map { it.uri }.toTypedArray(),
+                position)
                 findNavController().navigate(action)
             }
         })

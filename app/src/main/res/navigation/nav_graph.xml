@@ -77,11 +77,19 @@
 
         <argument
             android:name="audioTitle"
-            app:argType="string"/>
+            app:argType="string[]"/>
 
         <argument
             android:name="isPublic"
             app:argType="boolean"/>
+
+        <argument
+            android:name="audioUriList"
+            app:argType="string[]" />
+
+        <argument
+            android:name="position"
+            app:argType="integer"/>
 
         <action
             android:id="@+id/action_audioPlayerFragment_to_privateFilesFragment"

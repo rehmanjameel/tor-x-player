@@ -342,7 +342,8 @@ class PrivateFilesFragment : Fragment() {
                     override fun onItemClick(position: Int) {
                         val audio = audioList[position]
                         val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
-                            audio.uri, audio.title, false)
+                            audio.uri, audioList.map { it.title }.toTypedArray(), false, audioList.map { it.uri }.toTypedArray(),
+                            position)
                         findNavController().navigate(action)
                     }
                 })

@@ -23,6 +23,7 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
     val allPublicAudios: LiveData<MutableList<AudiosModel>>
     val allPrivateAudios: LiveData<MutableList<AudiosModel>>
     val filesDao = AppDatabase.getDatabase(application).fileDao()
+    var allUrisLive: LiveData<List<String>>
 
     init {
         repository = FileRepository(filesDao)
@@ -33,6 +34,8 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
         
         allPublicAudios = repository.allPublicAudios
         allPrivateAudios = repository.allPrivateAudios
+
+        allUrisLive = repository.allUrisLive
     }
 
     fun insertVideo(video: VideosModel) = viewModelScope.launch(Dispatchers.IO) {

@@ -79,6 +79,9 @@ interface FileDao {
     @Query("SELECT * FROM audio WHERE id = :audioId LIMIT 1")
     suspend fun getAudioById(audioId: Long): AudiosModel?
 
+    @Query("SELECT uri FROM audio")
+    fun getAllUrisLive(): LiveData<List<String>>
+
     @Query("Update audio SET is_private = :isPrivate WHERE id = :audioId")
     suspend fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean)
 

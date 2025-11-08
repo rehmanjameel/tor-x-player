@@ -65,6 +65,8 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.8.0")
     implementation("androidx.media3:media3-ui-compose:1.8.0")
 
+    implementation("com.airbnb.android:lottie:6.7.1")
+
     val room_version = "2.8.3"
 
     implementation("androidx.room:room-runtime:$room_version")
