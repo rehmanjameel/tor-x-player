@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "665145090633",
+    "project_id": "torx-player",
+    "storage_bucket": "torx-player.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:665145090633:android:3a1d1a45f200ec58221598",
+        "android_client_info": {
+          "package_name": "com.torx.torxplayer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxArfuVB_GuJrTNX7K28tl9iFbSK3G_yw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
