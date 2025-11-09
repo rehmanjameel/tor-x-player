@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -78,26 +79,6 @@ class VideosFragment : Fragment() {
             }
         }
 
-        // search videos
-        binding.searchTIET.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(p0: Editable?) {
-
-            }
-
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-            }
-
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                val query = p0.toString().trim()
-                if (query.isNotEmpty()) {
-                    searchVideos(query)
-                } else {
-                    videoAdapter.filterList(videoList)
-                }
-            }
-
-        })
-
         // Register the launcher for delete request
         deleteRequestLauncher =
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -118,6 +99,56 @@ class VideosFragment : Fragment() {
                     Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
                 }
             }
+
+        // When search icon clicked
+        binding.searchIcon.setOnClickListener {
+            binding.searchLayout.visibility = View.VISIBLE
+            binding.topLayout.visibility = View.GONE
+
+            // Hide main list until search text typed
+            binding.videoRV.visibility = View.GONE
+            binding.emptyView.visibility = View.GONE
+
+            binding.searchTIET.text.clear()
+            binding.searchTIET.requestFocus()
+
+            val imm = requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(binding.searchTIET, InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        // When back arrow clicked
+        binding.backArrow.setOnClickListener {
+            binding.searchLayout.visibility = View.GONE
+            binding.topLayout.visibility = View.VISIBLE
+
+            // Restore full list view
+            binding.videoRV.visibility = View.VISIBLE
+            binding.emptyView.visibility = View.GONE
+            videoAdapter.filterList(videoList) // restore original data
+
+            val imm = requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(binding.searchTIET.windowToken, 0)
+            binding.searchTIET.clearFocus()
+        }
+
+        // Listen for typing
+        binding.searchTIET.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {}
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim()
+
+                if (query.isNotEmpty()) {
+                    searchVideos(query)
+                } else {
+                    // blank screen if no text
+                    binding.videoRV.visibility = View.GONE
+                    binding.emptyView.visibility = View.GONE
+                }
+            }
+        })
 
         return binding.root
     }
@@ -425,11 +456,19 @@ class VideosFragment : Fragment() {
 
     // search videos
     private fun searchVideos(query: String) {
-
         val filteredVideos = videoList.filter { video ->
             video.title.contains(query, ignoreCase = true)
-        }.toMutableList()
-        videoAdapter.filterList(filteredVideos)
+        }
+
+        if (filteredVideos.isNotEmpty()) {
+            videoAdapter.filterList(filteredVideos.toMutableList())
+            binding.videoRV.visibility = View.VISIBLE
+            binding.emptyView.visibility = View.GONE
+        } else {
+            binding.videoRV.visibility = View.GONE
+            binding.emptyView.visibility = View.VISIBLE
+            binding.emptyView.text = "No videos found"
+        }
     }
 
 }

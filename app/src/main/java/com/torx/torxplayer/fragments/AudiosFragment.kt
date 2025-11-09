@@ -17,12 +17,14 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -46,7 +48,7 @@ class AudiosFragment : Fragment() {
     private lateinit var audioAdapter: AudioAdapter
     private var audioList = mutableListOf<AudiosModel>()
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
-    private lateinit var viewModel : FilesViewModel
+    private lateinit var viewModel: FilesViewModel
 
     private var lastDeletedUri: Uri? = null
 
@@ -64,27 +66,37 @@ class AudiosFragment : Fragment() {
         binding.audioRV.setHasFixedSize(true)
 
         // Register the launcher for delete request
-        deleteRequestLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                lastDeletedUri.let { deletedUri ->
-                    viewModel.deleteAudiosByUri(deletedUri.toString()) // also remove from DB
-                    audioList.removeAll { it.uri ==  deletedUri.toString() }
-                    audioAdapter.notifyDataSetChanged()
+        deleteRequestLauncher =
+            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    lastDeletedUri.let { deletedUri ->
+                        viewModel.deleteAudiosByUri(deletedUri.toString()) // also remove from DB
+                        audioList.removeAll { it.uri == deletedUri.toString() }
+                        audioAdapter.notifyDataSetChanged()
+                    }
+                    Toast.makeText(
+                        requireContext(),
+                        "File deleted successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    // You can refresh your list or remove the item here if not already done
+                } else {
+                    Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
                 }
-                Toast.makeText(requireContext(), "File deleted successfully", Toast.LENGTH_SHORT).show()
-                // You can refresh your list or remove the item here if not already done
-            } else {
-                Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
             }
-        }
 
         binding.donation.setOnClickListener {
-            val url = "https://donate.wfp.org/1243/donation/regular?campaign=4574&_ga=2.233279257.602488721.1762603852-1327722293.1762603852&_gac=1.187330266.1762603852.CjwKCAiA8bvIBhBJEiwAu5ayrDyDEAP5YnuLh0lhI8kMRsprikeoVM9kdNvpFIRbTpmzfzSD6wKZ2RoCojcQAvD_BwE"
+            val url =
+                "https://donate.wfp.org/1243/donation/regular?campaign=4574&_ga=2.233279257.602488721.1762603852-1327722293.1762603852&_gac=1.187330266.1762603852.CjwKCAiA8bvIBhBJEiwAu5ayrDyDEAP5YnuLh0lhI8kMRsprikeoVM9kdNvpFIRbTpmzfzSD6wKZ2RoCojcQAvD_BwE"
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 startActivity(intent)
             } catch (e: Exception) {
-                Toast.makeText(requireActivity(), "No browser found to open the link", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireActivity(),
+                    "No browser found to open the link",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -102,21 +114,59 @@ class AudiosFragment : Fragment() {
                 if (query.isNotEmpty()) {
                     searchAudios(query)
                 } else {
-                    audioAdapter.filterList(audioList)
+                    binding.audioRV.visibility = View.GONE
+                    binding.emptyView.visibility = View.GONE
                 }
             }
 
         })
+
+        binding.searchIcon.setOnClickListener {
+            binding.searchLayout.visibility = View.VISIBLE
+            binding.topLayout.visibility = View.GONE
+
+            binding.searchTIET.requestFocus()
+            binding.searchTIET.text.clear()
+
+            binding.audioRV.visibility = View.GONE
+            binding.emptyView.visibility = View.GONE
+
+            val imm =
+                requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(binding.searchTIET, InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        binding.backArrow.setOnClickListener {
+            binding.searchLayout.visibility = View.GONE
+            binding.topLayout.visibility = View.VISIBLE
+
+            binding.audioRV.visibility = View.VISIBLE
+            binding.emptyView.visibility = View.GONE
+            audioAdapter.filterList(audioList) // restore original data
+
+            binding.searchTIET.clearFocus()
+            val imm =
+                requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(binding.searchTIET.windowToken, 0) // Hide the keyboard
+        }
 
         return binding.root
     }
 
     private fun searchAudios(query: String) {
 
-        val filteredAudios = audioList.filter { video ->
-            video.title.contains(query, ignoreCase = true)
+        val filteredAudios = audioList.filter { audio ->
+            audio.title.contains(query, ignoreCase = true)
         }.toMutableList()
-        audioAdapter.filterList(filteredAudios)
+        if (filteredAudios.isNotEmpty()) {
+            audioAdapter.filterList(filteredAudios)
+            binding.audioRV.visibility = View.VISIBLE
+            binding.emptyView.visibility = View.GONE
+        } else {
+            binding.audioRV.visibility = View.GONE
+            binding.emptyView.visibility = View.VISIBLE
+            binding.emptyView.text = "No videos found"
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -136,8 +186,12 @@ class AudiosFragment : Fragment() {
             override fun onItemClick(position: Int) {
                 val audio = audioList[position]
                 val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                    audio.uri, audioList.map { it.title }.toTypedArray(), true, audioList.map { it.uri }.toTypedArray(),
-                position)
+                    audio.uri,
+                    audioList.map { it.title }.toTypedArray(),
+                    true,
+                    audioList.map { it.uri }.toTypedArray(),
+                    position
+                )
                 findNavController().navigate(action)
             }
         })
@@ -179,7 +233,8 @@ class AudiosFragment : Fragment() {
                 }
 
                 R.id.rateUs -> {
-                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT)
+                        .show()
                     true
                 }
 
@@ -194,6 +249,7 @@ class AudiosFragment : Fragment() {
 
         popupMenu.show()
     }
+
     // fetch audio files from the mobile
     private fun fetchAudioFiles(context: Context): MutableList<AudiosModel> {
         val audioList = mutableListOf<AudiosModel>()
@@ -230,7 +286,8 @@ class AudiosFragment : Fragment() {
         cursor?.use {
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-            val displayNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+            val displayNameColumn =
+                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
             val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
@@ -343,11 +400,11 @@ class AudiosFragment : Fragment() {
         // add the menu
         popupMenu.inflate(R.menu.options_menu)
         // implement on menu item click Listener
-        popupMenu.setOnMenuItemClickListener(object : PopupMenu.OnMenuItemClickListener{
+        popupMenu.setOnMenuItemClickListener(object : PopupMenu.OnMenuItemClickListener {
             override fun onMenuItemClick(item: MenuItem?): Boolean {
                 val audio = audioList[position]
 
-                when(item?.itemId){
+                when (item?.itemId) {
 
 //                    R.id.play -> {
 //                        val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
@@ -363,9 +420,14 @@ class AudiosFragment : Fragment() {
                         viewModel.updateAudioIsPrivate(audio.id, true)
                         audioList.removeAt(position)
                         audioAdapter.notifyItemRemoved(position)
-                        Toast.makeText(requireContext() , "Add to private clicked" , Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Add to private clicked",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return true
                     }
+
                     R.id.delete -> {
                         // define
 
@@ -384,7 +446,8 @@ class AudiosFragment : Fragment() {
         try {
             // For Android Q (API 29) and below — direct delete
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(audio.uri.toUri(), null, null)
+                val rowsDeleted =
+                    requireContext().contentResolver.delete(audio.uri.toUri(), null, null)
                 if (rowsDeleted > 0) {
 
                     viewModel.deleteAudiosByUri(audio.uri) // also remove from DB
@@ -397,7 +460,8 @@ class AudiosFragment : Fragment() {
             } else {
                 // Android 11+ (Scoped Storage) — user confirmation required
                 val collection = arrayListOf(audio.uri.toUri())
-                val pendingIntent = MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
+                val pendingIntent =
+                    MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
                 val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
                 lastDeletedUri = audio.uri.toUri()
 

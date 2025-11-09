@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("TAG", msg)
 //            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
         })
+        FirebaseMessaging.getInstance().subscribeToTopic("allUsers")
 
         intent?.extras?.getString("link")?.let { link ->
             val browserIntent = Intent(Intent.ACTION_VIEW, link.toUri())

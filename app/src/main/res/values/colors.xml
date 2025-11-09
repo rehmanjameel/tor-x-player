@@ -10,5 +10,7 @@
     <color name="red_light">#9D0812</color>
     <color name="gray">#9E9E9E</color>
     <color name="gray1">#888686</color>
+    <color name="green">#5D9F17</color>
+    <color name="blue">#090F70</color>
 
 </resources>
