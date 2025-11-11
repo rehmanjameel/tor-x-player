@@ -72,7 +72,7 @@ class VideosFragment : Fragment() {
         binding.donation.setOnClickListener {
             val url = "https://donate.wfp.org/1243/donation/regular?campaign=4574&_ga=2.233279257.602488721.1762603852-1327722293.1762603852&_gac=1.187330266.1762603852.CjwKCAiA8bvIBhBJEiwAu5ayrDyDEAP5YnuLh0lhI8kMRsprikeoVM9kdNvpFIRbTpmzfzSD6wKZ2RoCojcQAvD_BwE"
             try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                 startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(requireActivity(), "No browser found to open the link", Toast.LENGTH_SHORT).show()
@@ -210,27 +210,37 @@ class VideosFragment : Fragment() {
 
         popupMenu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                R.id.share -> {
-                    Toast.makeText(requireContext(), "Share coming soon", Toast.LENGTH_SHORT).show()
+                R.id.startVersion -> {
+                    Toast.makeText(requireContext(), "App version: ${getAppVersionName(requireContext())}", Toast.LENGTH_SHORT).show()
                     true
                 }
 
-                R.id.rateUs -> {
-                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT)
-                        .show()
-                    true
-                }
-
-                R.id.other -> {
-                    Toast.makeText(requireContext(), "Other coming soon", Toast.LENGTH_SHORT).show()
-                    true
-                }
+//                R.id.rateUs -> {
+//                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT)
+//                        .show()
+//                    true
+//                }
+//
+//                R.id.other -> {
+//                    Toast.makeText(requireContext(), "Other coming soon", Toast.LENGTH_SHORT).show()
+//                    true
+//                }
 
                 else -> false
             }
         }
 
         popupMenu.show()
+    }
+
+    fun getAppVersionName(context: Context): String? {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            return packageInfo.versionName
+        } catch (e: PackageManager.NameNotFoundException) {
+            e.printStackTrace()
+        }
+        return null
     }
 
     private fun setupRecyclerView() {

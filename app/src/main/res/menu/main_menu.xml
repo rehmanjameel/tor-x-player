@@ -2,20 +2,20 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:title="Share"
-        android:id="@+id/share"
+        android:title="Start Version"
+        android:id="@+id/startVersion"
         android:orderInCategory="1"
         />
 
-    <item
-        android:title="Rate us"
-        android:id="@+id/rateUs"
-        android:orderInCategory="2"
-        />
+<!--    <item-->
+<!--        android:title="Rate us"-->
+<!--        android:id="@+id/rateUs"-->
+<!--        android:orderInCategory="2"-->
+<!--        />-->
 
-    <item
-        android:title="Other"
-        android:id="@+id/other"
-        android:orderInCategory="2"
-        />
+<!--    <item-->
+<!--        android:title="Other"-->
+<!--        android:id="@+id/other"-->
+<!--        android:orderInCategory="2"-->
+<!--        />-->
 </menu>
