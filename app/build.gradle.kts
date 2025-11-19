@@ -22,13 +22,25 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isShrinkResources = true
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
+    // create separate apk
+//    splits {
+//        abi {
+//            isEnable = true // Enable ABI splits
+//            reset() // Clear the default list of ABIs
+//            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64") // Specify desired ABIs
+//            isUniversalApk = false // Set to false to generate separate APKs
+//        }
+//    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
