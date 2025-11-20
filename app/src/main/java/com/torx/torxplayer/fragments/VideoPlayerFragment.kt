@@ -39,6 +39,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class VideoPlayerFragment : Fragment() {
 
@@ -58,8 +59,8 @@ class VideoPlayerFragment : Fragment() {
 
     private var initialY = 0f
     private var initialX = 0f
-    private var brightness = 50
-    private var volume = 50
+    private var brightness: Float = 50F
+    private var volume: Float = 50f
     private lateinit var audioManager: AudioManager
 
     override fun onCreateView(
@@ -76,12 +77,12 @@ class VideoPlayerFragment : Fragment() {
         seekBarVolume = binding.player.findViewById<SeekBar>(R.id.seekBarVolume)
         seekBarBrightness = binding.player.findViewById<SeekBar>(R.id.seekBarBrightness)
 
-        setupSwipeControls()
         setFullScreen()
         setLockScreen()
         preparePlayer()
         addBackForward()
         setOrientation()
+        setupSwipeControls()
 
         binding.player.findViewById<ImageView>(R.id.custom_play).setOnClickListener {
             playPauseVideo()
@@ -160,12 +161,13 @@ class VideoPlayerFragment : Fragment() {
             }
         })
 
-        brightness = (requireActivity().window.attributes.screenBrightness * 100).toInt().coerceIn(0,100)
-        seekBarBrightness.progress = brightness
+        brightness =
+            (requireActivity().window.attributes.screenBrightness * 100).toInt().coerceIn(0,100).toFloat()
+        seekBarBrightness.progress = brightness.toInt()
 
         val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        volume = (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume)
-        seekBarVolume.progress = volume
+        volume = (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume).toFloat()
+        seekBarVolume.progress = volume.toInt()
 
 
         startSeekbarUpdater()
@@ -363,19 +365,20 @@ class VideoPlayerFragment : Fragment() {
 
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = initialY - event.y
-                    val percent = (deltaY / height * 100).toInt()
 
                     if (initialX < width / 2) {
-                        // Left side → Brightness
-                        brightness = (brightness + percent).coerceIn(0, 100)
-                        setBrightness(brightness)
-                        seekBarBrightness.progress = brightness
+                        // Left → Brightness
+                        val deltaBrightness = (deltaY / height * 100)  // float
+                        brightness = (brightness + deltaBrightness).coerceIn(0f, 100f)
+                        setBrightness(brightness.toInt())
+                        seekBarBrightness.progress = brightness.toInt()
                         seekBarBrightness.visibility = View.VISIBLE
                     } else {
-                        // Right side → Volume
-                        volume = (volume + percent).coerceIn(0, 100)
-                        setVolume(volume)
-                        seekBarVolume.progress = volume
+                        // Right → Volume
+                        val deltaVolume = (deltaY / height * 100)
+                        volume = (volume + deltaVolume).coerceIn(0f, 100f)
+                        setVolume(volume.toInt())
+                        seekBarVolume.progress = volume.toInt()
                         seekBarVolume.visibility = View.VISIBLE
                     }
 
@@ -384,13 +387,12 @@ class VideoPlayerFragment : Fragment() {
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    // Hide seekbars
                     seekBarBrightness.visibility = View.GONE
                     seekBarVolume.visibility = View.GONE
 
-                    // Check if it was a simple tap (no movement)
-                    if (Math.abs(event.y - initialY) < 10 && Math.abs(event.x - initialX) < 10) {
-                        v.performClick()  // ⚡ This fixes the warning
+                    // Tap detection
+                    if (abs(event.y - initialY) < 10 && abs(event.x - initialX) < 10) {
+                        v.performClick()
                     }
                     true
                 }
@@ -399,6 +401,7 @@ class VideoPlayerFragment : Fragment() {
             }
         }
     }
+
 
     private fun setBrightness(value: Int) {
         val lp = requireActivity().window.attributes

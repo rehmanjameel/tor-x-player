@@ -172,14 +172,14 @@
     <!-- Left side: Brightness -->
     <SeekBar
         android:id="@+id/seekBarBrightness"
-        android:layout_width="4dp"
-        android:layout_height="200dp"
+        android:layout_width="120dp"
+        android:layout_height="5dp"
         android:layout_alignParentStart="true"
         android:layout_centerVertical="true"
         android:max="100"
         android:progress="50"
         android:rotation="270"
-        android:layout_marginStart="20dp"
+        android:layout_marginStart="-20dp"
         android:visibility="gone"
         android:thumb="@drawable/seekbar_thumb"
         android:progressDrawable="@drawable/custom_seekbar"/>
@@ -187,17 +187,16 @@
     <!-- Right side: Volume -->
     <SeekBar
         android:id="@+id/seekBarVolume"
-        android:layout_width="4dp"
-        android:layout_height="200dp"
+        android:layout_width="120dp"
+        android:layout_height="5dp"
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
         android:max="100"
         android:progress="50"
         android:rotation="270"
-        android:layout_marginEnd="20dp"
+        android:layout_marginEnd="-20dp"
         android:visibility="gone"
         android:thumb="@drawable/seekbar_thumb"
         android:progressDrawable="@drawable/custom_seekbar"/>
-
 
 </RelativeLayout>
