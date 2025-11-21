@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
@@ -39,6 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.w3c.dom.Text
 import kotlin.math.abs
 
 class VideoPlayerFragment : Fragment() {
@@ -108,6 +110,13 @@ class VideoPlayerFragment : Fragment() {
         )
 
         return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).setOnClickListener {
+            speedPlayBack(it)
+        }
     }
 
     private fun preparePlayer() {
@@ -182,6 +191,8 @@ class VideoPlayerFragment : Fragment() {
             override fun onStartTrackingTouch(sb: SeekBar?) {}
             override fun onStopTrackingTouch(sb: SeekBar?) {}
         })
+
+
     }
 
     private fun startSeekbarUpdater() {
@@ -415,6 +426,42 @@ class VideoPlayerFragment : Fragment() {
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
     }
 
+    private fun speedPlayBack(view: View) {
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.inflate(R.menu.playback_speed)
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            when(item.itemId) {
+                R.id.x0_5 -> {
+                    exoPlayer?.setPlaybackSpeed(0.5f)
+                    binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).text = "0.5x"
+                    true
+                }
+
+                R.id.x1_0 -> {
+                    exoPlayer?.setPlaybackSpeed(1.0f)
+                    binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).text = "1.0x"
+                    true
+                }
+
+                R.id.x1_5 -> {
+                    exoPlayer?.setPlaybackSpeed(1.5f)
+                    binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).text = "1.5x"
+                    true
+                }
+
+                R.id.x2_0 -> {
+                    exoPlayer?.setPlaybackSpeed(2.0f)
+                    binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).text = "2.0x"
+                    true
+                }
+
+                else -> false
+            }
+        }
+
+        popupMenu.show()
+    }
 
     override fun onStop() {
         super.onStop()

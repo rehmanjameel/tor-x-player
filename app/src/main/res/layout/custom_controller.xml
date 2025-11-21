@@ -109,12 +109,22 @@
 <!--                android:visibility="gone"-->
 <!--                />-->
 
+            <TextView
+                android:id="@+id/setPlayBackSpeed"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:text="1.0x"
+                android:gravity="center_vertical"
+                android:textColor="@color/white"
+                android:theme="@style/ClickableView" />
+
             <ImageView
                 android:id="@+id/imageViewFullScreen"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:src="@drawable/baseline_fullscreen_24"
                 android:theme="@style/ClickableView" />
+
         </LinearLayout>
 
         <!-- Seekbar + Time Row -->
