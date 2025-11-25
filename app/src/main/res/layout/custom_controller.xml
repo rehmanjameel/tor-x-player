@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:background="#80000000">
 
+    <!-- ===================== TOP BAR ===================== -->
     <ImageView
         android:id="@+id/closePlayer"
         android:layout_width="32dp"
@@ -24,20 +25,10 @@
         android:maxLines="1"
         android:ellipsize="end"
         android:layout_toEndOf="@id/closePlayer"
-        android:layout_toStartOf="@id/imageViewLock"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="30dp"
         android:layout_marginTop="20dp"/>
 
-    <ImageView
-        android:id="@+id/imageViewLock"
-        android:layout_width="42dp"
-        android:layout_height="42dp"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="10dp"
-        android:padding="10dp"
-        android:src="@drawable/baseline_lock_open_24"
-        android:theme="@style/ClickableView" />
-
+    <!-- ===================== CENTER CONTROLS ===================== -->
     <LinearLayout
         android:id="@+id/linearLayoutControlUp"
         android:layout_width="wrap_content"
@@ -47,8 +38,8 @@
 
         <ImageView
             android:id="@+id/custom_rew"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:layout_marginEnd="50dp"
             android:src="@drawable/baseline_replay_10_24"
             android:visibility="visible"
@@ -56,21 +47,22 @@
 
         <ImageView
             android:id="@+id/custom_play"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:src="@drawable/baseline_pause_circle_filled_24"
             android:theme="@style/ClickableView" />
 
         <ImageView
             android:id="@+id/custom_ffwd"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:layout_marginStart="50dp"
             android:visibility="visible"
             android:src="@drawable/baseline_forward_10_24"
             android:theme="@style/ClickableView" />
     </LinearLayout>
 
+    <!-- ===================== BOTTOM CONTROLS ===================== -->
     <LinearLayout
         android:id="@+id/linearLayoutControlBottom"
         android:layout_width="match_parent"
@@ -78,56 +70,7 @@
         android:layout_alignParentBottom="true"
         android:orientation="vertical">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="end"
-            android:orientation="horizontal"
-            android:padding="8dp">
-
-<!--            <TextView-->
-<!--                android:id="@+id/exo_position"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:textColor="@color/white"-->
-<!--                android:visibility="gone"/>-->
-
-<!--            <TextView-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginEnd="4dp"-->
-<!--                android:text="/"-->
-<!--                android:textColor="#CBCDC8"-->
-<!--                android:visibility="gone"/>-->
-
-<!--            <TextView-->
-<!--                android:id="@+id/exo_duration"-->
-<!--                android:layout_width="0dp"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_weight="1"-->
-<!--                android:textColor="#CBCDC8"-->
-<!--                android:visibility="gone"-->
-<!--                />-->
-
-            <TextView
-                android:id="@+id/setPlayBackSpeed"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:text="1.0x"
-                android:gravity="center_vertical"
-                android:textColor="@color/white"
-                android:theme="@style/ClickableView" />
-
-            <ImageView
-                android:id="@+id/imageViewFullScreen"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:src="@drawable/baseline_fullscreen_24"
-                android:theme="@style/ClickableView" />
-
-        </LinearLayout>
-
-        <!-- Seekbar + Time Row -->
+        <!-- Time + Seekbar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -135,7 +78,7 @@
             android:gravity="center_vertical"
             android:layout_marginHorizontal="20dp"
             android:layout_marginTop="12dp"
-            android:layout_marginBottom="20dp">
+            android:layout_marginBottom="10dp">
 
             <TextView
                 android:id="@+id/tvCurrentTime"
@@ -143,8 +86,7 @@
                 android:layout_height="wrap_content"
                 android:text="0:00"
                 android:textColor="@color/white"
-                android:textSize="14sp"
-                android:layout_marginEnd="0dp" />
+                android:textSize="14sp" />
 
             <SeekBar
                 android:id="@+id/seekBar"
@@ -161,25 +103,67 @@
                 android:layout_height="wrap_content"
                 android:text="0:00"
                 android:textColor="@color/white"
-                android:textSize="14sp"
-                android:layout_marginStart="0dp" />
-
+                android:textSize="14sp" />
         </LinearLayout>
 
-        <androidx.media3.ui.DefaultTimeBar
-            android:id="@+id/exo_progress"
+        <!-- Bottom row: Lock | Speed | Aspect Ratio | Fullscreen -->
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="-8dp"
-            app:buffered_color="#95989F"
-            app:played_color="#FF00FF"
-            app:scrubber_color="#FF00FF"
-            android:visibility="gone"
-            app:unplayed_color="#45424E" />
+            android:padding="8dp">
 
+            <ImageView
+                android:id="@+id/imageViewLock"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentStart="true"
+                android:layout_marginStart="10dp"
+                android:src="@drawable/baseline_lock_open_24"
+                android:theme="@style/ClickableView" />
+
+            <ImageView
+                android:id="@+id/imageViewRotateLock"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/baseline_screen_lock_rotation_24"
+                android:theme="@style/ClickableView"
+                android:layout_marginStart="10dp"
+                android:layout_toEndOf="@id/imageViewLock"/>
+
+
+            <TextView
+                android:id="@+id/setPlayBackSpeed"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:text="1.0x"
+                android:gravity="center"
+                android:textColor="@color/white"
+                android:theme="@style/ClickableView"
+                android:layout_marginEnd="10dp"
+                android:layout_toStartOf="@id/btnAspectRatio"/>
+
+            <!-- ⭐ NEW: Aspect Ratio Button -->
+            <ImageView
+                android:id="@+id/btnAspectRatio"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/baseline_aspect_ratio_24"
+                android:layout_toStartOf="@id/imageViewFullScreen"
+                android:layout_marginEnd="10dp"
+                android:theme="@style/ClickableView" />
+
+            <ImageView
+                android:id="@+id/imageViewFullScreen"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/baseline_fullscreen_24"
+                android:theme="@style/ClickableView"/>
+        </RelativeLayout>
     </LinearLayout>
 
-    <!-- Left side: Brightness -->
+    <!-- ===================== BRIGHTNESS & VOLUME ===================== -->
     <SeekBar
         android:id="@+id/seekBarBrightness"
         android:layout_width="120dp"
@@ -194,7 +178,6 @@
         android:thumb="@drawable/seekbar_thumb"
         android:progressDrawable="@drawable/custom_seekbar"/>
 
-    <!-- Right side: Volume -->
     <SeekBar
         android:id="@+id/seekBarVolume"
         android:layout_width="120dp"
@@ -208,5 +191,33 @@
         android:visibility="gone"
         android:thumb="@drawable/seekbar_thumb"
         android:progressDrawable="@drawable/custom_seekbar"/>
+
+    <!-- ===================== ⭐ NEW DOUBLE TAP ZONES ===================== -->
+    <View
+        android:id="@+id/tapLeft"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_toStartOf="@id/linearLayoutControlUp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent" />
+
+    <View
+        android:id="@+id/tapRight"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:layout_toEndOf="@id/linearLayoutControlUp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent" />
+
+    <TextView
+        android:id="@+id/skipText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/linearLayoutControlUp"
+        android:layout_marginBottom="10dp"
+        android:textSize="18sp"
+        />
 
 </RelativeLayout>

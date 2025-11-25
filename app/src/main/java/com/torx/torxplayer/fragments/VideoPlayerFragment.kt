@@ -19,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
@@ -35,6 +36,7 @@ import com.torx.torxplayer.databinding.FragmentVideoPlayerBinding
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
+import androidx.media3.ui.AspectRatioFrameLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -65,6 +67,12 @@ class VideoPlayerFragment : Fragment() {
     private var volume: Float = 50f
     private lateinit var audioManager: AudioManager
 
+    private var lastTapLeft = 0L
+    private var lastTapRight = 0L
+    private val skipMs = 10000L // 10 sec
+    private var isRotationLocked = false
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -84,6 +92,7 @@ class VideoPlayerFragment : Fragment() {
         preparePlayer()
         addBackForward()
         setOrientation()
+        initRotationLockButton()
         setupSwipeControls()
 
         binding.player.findViewById<ImageView>(R.id.custom_play).setOnClickListener {
@@ -112,12 +121,80 @@ class VideoPlayerFragment : Fragment() {
         return binding.root
     }
 
+    @OptIn(UnstableApi::class)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).setOnClickListener {
             speedPlayBack(it)
         }
+
+        var ratioMode = 0
+
+        val aspectButton = binding.player.findViewById<ImageView>(R.id.btnAspectRatio)
+
+        // Icon list in order of mode
+        val ratioIcons = listOf(
+            R.drawable.baseline_fit_screen_24,        // 0
+            R.drawable.baseline_open_in_full_24,       // 1
+            R.drawable.baseline_zoom_in_map_24,       // 2
+            R.drawable.baseline_aspect_ratio_24    // 3
+        )
+
+        aspectButton.setOnClickListener {
+            ratioMode = (ratioMode + 1) % 4   // cycle through 4 modes
+
+            when (ratioMode) {
+                0 -> {
+                    binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    Toast.makeText(context, "Fit to Screen", Toast.LENGTH_SHORT).show()
+                }
+                1 -> {
+                    binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    Toast.makeText(context, "Fill (Crop)", Toast.LENGTH_SHORT).show()
+                }
+                2 -> {
+                    binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    Toast.makeText(context, "Zoom", Toast.LENGTH_SHORT).show()
+                }
+                3 -> {
+                    binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+                    Toast.makeText(context, "Original Ratio", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            // ⭐ update icon
+            aspectButton.setImageResource(ratioIcons[ratioMode])
+        }
+
+
+        binding.player.findViewById<View>(R.id.tapLeft).setOnClickListener {
+            val now = System.currentTimeMillis()
+            if (now - lastTapLeft < 300) {
+                val newPos = (exoPlayer!!.currentPosition?.minus(skipMs))?.coerceAtLeast(0)
+                exoPlayer?.seekTo(newPos ?: 0)
+                showSkipAnimation("-10s")
+            }
+            lastTapLeft = now
+        }
+
+        binding.player.findViewById<View>(R.id.tapRight).setOnClickListener {
+            val now = System.currentTimeMillis()
+            if (now - lastTapRight < 300) {
+                val newPos = (exoPlayer?.currentPosition?.plus(skipMs))?.coerceAtMost(exoPlayer!!.duration)
+                exoPlayer?.seekTo(newPos ?: 0)
+                showSkipAnimation("+10s")
+            }
+            lastTapRight = now
+        }
     }
+
+    private fun showSkipAnimation(text: String) {
+        val skipText = binding.player.findViewById<TextView>(R.id.skipText)
+        skipText.text = text
+        skipText.alpha = 1f
+        skipText.animate().alpha(0f).setDuration(600).start()
+    }
+
 
     private fun preparePlayer() {
         binding.player.findViewById<TextView>(R.id.titleText).text = args.videoTitle
@@ -259,27 +336,61 @@ class VideoPlayerFragment : Fragment() {
             SensorManager.SENSOR_DELAY_NORMAL
         ) {
             override fun onOrientationChanged(orientation: Int) {
-                Log.e(
-                    "DEBUG_TAG",
-                    "Orientation changed to $orientation"
-                )
+
+                if (isRotationLocked) return // Skip rotation
 
                 when (orientation) {
                     in 1..89 -> {
-                        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-
+                        requireActivity().requestedOrientation =
+                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                     }
-                    in 180 .. 360 -> {
-                        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-
+                    in 180..360 -> {
+                        requireActivity().requestedOrientation =
+                            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                     }
-                    in 90 .. 180 -> {
-                        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+                    in 90..180 -> {
+                        requireActivity().requestedOrientation =
+                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
                     }
                 }
             }
         }
     }
+
+    private fun initRotationLockButton() {
+        val btnRotateLock =
+            binding.player.findViewById<ImageView>(R.id.imageViewRotateLock)
+
+        btnRotateLock.setOnClickListener {
+
+            isRotationLocked = !isRotationLocked
+
+            if (isRotationLocked) {
+                // 🔒 Lock orientation at current state
+                val currentOrientation = resources.configuration.orientation
+
+                if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    requireActivity().requestedOrientation =
+                        ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                } else {
+                    requireActivity().requestedOrientation =
+                        ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                }
+
+                btnRotateLock.setImageResource(R.drawable.baseline_screen_lock_rotation_24)
+                Toast.makeText(requireContext(), "Rotation Locked", Toast.LENGTH_SHORT).show()
+
+            } else {
+                // 🔓 Unlock orientation (follow sensors)
+                requireActivity().requestedOrientation =
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR
+
+                btnRotateLock.setImageResource(R.drawable.baseline_screen_rotation_24)
+                Toast.makeText(requireContext(), "Rotation Unlocked", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 
     private fun lockScreen(lock: Boolean) {
         if (lock) {
