@@ -5,6 +5,7 @@
 
     <color name="bottom_bar_bg">#121212</color>
     <color name="card_bg">#232323</color>
+    <color name="volume_bg">#80000000</color>
     <color name="primary">#FF5722</color>
     <color name="red">#F31221</color>
     <color name="red_light">#9D0812</color>

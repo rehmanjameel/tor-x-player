@@ -55,14 +55,21 @@ class VideoPlayerFragment : Fragment() {
 
     private lateinit var seekBar: SeekBar
     private lateinit var seekBarBrightness: SeekBar
+    private lateinit var volumeLayout: LinearLayout
+    private lateinit var brightnessLayout: LinearLayout
     private lateinit var seekBarVolume: SeekBar
+    private lateinit var brightnessValue: TextView
+    private lateinit var soundValue: TextView
     private lateinit var tvCurrentTime: TextView
     private lateinit var tvTotalTime: TextView
     private lateinit var binding: FragmentVideoPlayerBinding
 
 
-    private var initialY = 0f
+    // gesture tracking
     private var initialX = 0f
+    private var initialY = 0f
+    private var lastX = 0f
+    private var lastY = 0f
     private var brightness: Float = 50F
     private var volume: Float = 50f
     private lateinit var audioManager: AudioManager
@@ -86,6 +93,10 @@ class VideoPlayerFragment : Fragment() {
         audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
         seekBarVolume = binding.player.findViewById<SeekBar>(R.id.seekBarVolume)
         seekBarBrightness = binding.player.findViewById<SeekBar>(R.id.seekBarBrightness)
+        volumeLayout = binding.player.findViewById<LinearLayout>(R.id.volumeLayout)
+        brightnessLayout = binding.player.findViewById<LinearLayout>(R.id.brightnessLayout)
+        brightnessValue = binding.player.findViewById(R.id.brightnessValue)    // TextView showing "50%"
+        soundValue = binding.player.findViewById(R.id.soundValue)
 
         setFullScreen()
         setLockScreen()
@@ -146,23 +157,23 @@ class VideoPlayerFragment : Fragment() {
             when (ratioMode) {
                 0 -> {
                     binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    Toast.makeText(context, "Fit to Screen", Toast.LENGTH_SHORT).show()
+                    showSkipAnimation("Fit to Screen")
                 }
                 1 -> {
                     binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    Toast.makeText(context, "Fill (Crop)", Toast.LENGTH_SHORT).show()
+                    showSkipAnimation("Fill (Crop)")
                 }
                 2 -> {
                     binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    Toast.makeText(context, "Zoom", Toast.LENGTH_SHORT).show()
+                    showSkipAnimation("Zoom")
                 }
                 3 -> {
                     binding.player.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
-                    Toast.makeText(context, "Original Ratio", Toast.LENGTH_SHORT).show()
+                    showSkipAnimation("Original Ratio")
                 }
             }
 
-            // ⭐ update icon
+            // update icon
             aspectButton.setImageResource(ratioIcons[ratioMode])
         }
 
@@ -194,7 +205,6 @@ class VideoPlayerFragment : Fragment() {
         skipText.alpha = 1f
         skipText.animate().alpha(0f).setDuration(600).start()
     }
-
 
     private fun preparePlayer() {
         binding.player.findViewById<TextView>(R.id.titleText).text = args.videoTitle
@@ -391,7 +401,6 @@ class VideoPlayerFragment : Fragment() {
         }
     }
 
-
     private fun lockScreen(lock: Boolean) {
         if (lock) {
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.INVISIBLE
@@ -473,47 +482,65 @@ class VideoPlayerFragment : Fragment() {
     }
 
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun setupSwipeControls() {
         binding.player.setOnTouchListener { v, event ->
             val width = binding.player.width
             val height = binding.player.height
 
             when (event.action) {
+
                 MotionEvent.ACTION_DOWN -> {
-                    initialY = event.y
                     initialX = event.x
+                    initialY = event.y
+                    lastX = event.x
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaY = initialY - event.y
+                    val dx = event.x - lastX   // horizontal movement
+                    val absDX = abs(dx)
 
-                    if (initialX < width / 2) {
-                        // Left → Brightness
-                        val deltaBrightness = (deltaY / height * 100)  // float
-                        brightness = (brightness + deltaBrightness).coerceIn(0f, 100f)
-                        setBrightness(brightness.toInt())
-                        seekBarBrightness.progress = brightness.toInt()
-                        seekBarBrightness.visibility = View.VISIBLE
-                    } else {
-                        // Right → Volume
-                        val deltaVolume = (deltaY / height * 100)
-                        volume = (volume + deltaVolume).coerceIn(0f, 100f)
-                        setVolume(volume.toInt())
-                        seekBarVolume.progress = volume.toInt()
-                        seekBarVolume.visibility = View.VISIBLE
+                    val horizontalThreshold = 10f
+
+                    if (absDX > horizontalThreshold) {
+
+                        // 🟦 TOP HALF → VOLUME
+                        if (initialY < height / 2f) {
+
+                            val deltaVolume = (dx / width * 100f)
+                            volume = (volume + deltaVolume).coerceIn(0f, 100f)
+
+                            setVolume(volume.toInt())
+                            seekBarVolume.progress = volume.toInt()
+
+                            soundValue.text = "${volume.toInt()}%"
+                            volumeLayout.visibility = View.VISIBLE
+
+                        } else {
+                            // 🟨 BOTTOM HALF → BRIGHTNESS
+
+                            val deltaBrightness = (dx / width * 100f)
+                            brightness = (brightness + deltaBrightness).coerceIn(0f, 100f)
+
+                            setBrightness(brightness.toInt())
+                            seekBarBrightness.progress = brightness.toInt()
+
+                            brightnessValue.text = "${brightness.toInt()}%"
+                            brightnessLayout.visibility = View.VISIBLE
+                        }
                     }
 
-                    initialY = event.y
+                    lastX = event.x
                     true
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    seekBarBrightness.visibility = View.GONE
-                    seekBarVolume.visibility = View.GONE
+                    brightnessLayout.visibility = View.GONE
+                    volumeLayout.visibility = View.GONE
 
                     // Tap detection
-                    if (abs(event.y - initialY) < 10 && abs(event.x - initialX) < 10) {
+                    if (abs(event.x - initialX) < 10f && abs(event.y - initialY) < 10f) {
                         v.performClick()
                     }
                     true
@@ -521,6 +548,16 @@ class VideoPlayerFragment : Fragment() {
 
                 else -> false
             }
+        }
+    }
+
+
+
+    private fun seekBy(millis: Long) {
+        exoPlayer?.let { player ->
+            val newPos = (player.currentPosition + millis)
+                .coerceIn(0L, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE)
+            player.seekTo(newPos)
         }
     }
 
