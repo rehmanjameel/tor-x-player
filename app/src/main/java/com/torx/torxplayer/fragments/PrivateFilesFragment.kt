@@ -232,6 +232,10 @@ class PrivateFilesFragment : Fragment() {
                     override fun onLongItemClick(position: Int) {
 
                     }
+
+                    override fun onSelectionChanged(count: Int) {
+
+                    }
                 })
                 binding.privateFilesRV.apply {
                     layoutManager = GridLayoutManager(requireContext(), 1)
@@ -354,6 +358,10 @@ class PrivateFilesFragment : Fragment() {
                     }
 
                     override fun onLongItemClick(position: Int) {
+
+                    }
+
+                    override fun onSelectionChanged(count: Int) {
 
                     }
                 })

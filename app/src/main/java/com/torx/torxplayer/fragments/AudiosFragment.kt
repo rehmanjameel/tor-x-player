@@ -198,6 +198,10 @@ class AudiosFragment : Fragment() {
             override fun onLongItemClick(position: Int) {
 
             }
+
+            override fun onSelectionChanged(count: Int) {
+
+            }
         })
         binding.audioRV.adapter = audioAdapter
 
