@@ -62,6 +62,11 @@ class VideosAdapter(
             onOptionsMenuClickListener.onItemClick(position)
         }
 
+        holder.cardItem.setOnLongClickListener {
+            onOptionsMenuClickListener.onLongItemClick(position)
+            true
+        }
+
     }
 
     fun filterList(filterList: MutableList<VideosModel>) {

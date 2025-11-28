@@ -8,4 +8,6 @@ interface OptionsMenuClickListener {
     fun onOptionsMenuClicked(position: Int, anchorView: View)
     fun onItemClick(position: Int)
 
+    fun onLongItemClick(position: Int)
+
 }

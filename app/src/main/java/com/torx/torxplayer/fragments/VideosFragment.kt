@@ -172,10 +172,19 @@ class VideosFragment : Fragment() {
                 val video = videoList[position]
                 val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                     video.contentUri,
-                    video.title,
-                    true
+                    videoList.map { it.title }.toTypedArray(),
+                    true,
+                    videoList.map { it.contentUri }.toTypedArray(),
+                    position
                 )
                 findNavController().navigate(action)
+            }
+
+            override fun onLongItemClick(position: Int) {
+                val video = videoList[position]
+                Toast.makeText(requireContext(), "Long press clicked", Toast.LENGTH_SHORT).show()
+                Log.e("long press", "long press clicked")
+//                deleteFileFromStorage(video)
             }
         })
         binding.videoRV.adapter = videoAdapter
@@ -243,36 +252,11 @@ class VideosFragment : Fragment() {
         return null
     }
 
-    private fun setupRecyclerView() {
-        Log.e("video list", "$videoList")
-        videoAdapter =
-            VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
-                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                    performOptionsMenuClick(position, anchorView)
-                }
-
-                override fun onItemClick(position: Int) {
-                    val video = videoList[position]
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                        video.contentUri,
-                        video.title,
-                        true
-                    )
-                    findNavController().navigate(action)
-                }
-            })
-        binding.videoRV.adapter = videoAdapter
-
-
-    }
-
-
     // this function will be called when the fragment is created when to check the permissions
     private val storagePermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
                 loadMediaFilesIntoDB()
-//                videoList = fetchMediaFiles(requireContext())
             } else {
                 Toast.makeText(requireContext(), "Permission Denied", Toast.LENGTH_SHORT).show()
             }

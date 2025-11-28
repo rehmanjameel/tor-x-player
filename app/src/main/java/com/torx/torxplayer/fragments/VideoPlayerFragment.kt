@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.hardware.SensorManager
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -53,6 +54,9 @@ class VideoPlayerFragment : Fragment() {
     var mOrientationListener: OrientationEventListener? = null
     private var seekJob: Job? = null
 
+    private var videoList: List<Uri> = emptyList()
+    private var videoTitleList: List<String> = emptyList()
+    private var currentIndex = 0
     private lateinit var seekBar: SeekBar
     private lateinit var seekBarBrightness: SeekBar
     private lateinit var volumeLayout: LinearLayout
@@ -86,6 +90,9 @@ class VideoPlayerFragment : Fragment() {
     ): View? {
         // Inflate the layout for this fragment
         binding = FragmentVideoPlayerBinding.inflate(inflater, container, false)
+        videoList = args.videoUriList.map { it.toUri() }
+        videoTitleList = args.videoTitle.toList()
+        currentIndex = args.position
 
         seekBar = binding.player.findViewById<SeekBar>(R.id.seekBar)
         tvCurrentTime = binding.player.findViewById<TextView>(R.id.tvCurrentTime)
@@ -207,7 +214,8 @@ class VideoPlayerFragment : Fragment() {
     }
 
     private fun preparePlayer() {
-        binding.player.findViewById<TextView>(R.id.titleText).text = args.videoTitle
+        binding.player.findViewById<TextView>(R.id.titleText).text = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
+
         exoPlayer = ExoPlayer.Builder(requireContext()).setSeekBackIncrementMs(INCREMENT_MILLIS)
             .setSeekForwardIncrementMs(INCREMENT_MILLIS)
             .build()

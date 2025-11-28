@@ -194,6 +194,10 @@ class AudiosFragment : Fragment() {
                 )
                 findNavController().navigate(action)
             }
+
+            override fun onLongItemClick(position: Int) {
+
+            }
         })
         binding.audioRV.adapter = audioAdapter
 

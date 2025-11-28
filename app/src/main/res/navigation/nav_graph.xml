@@ -45,23 +45,32 @@
             android:id="@+id/action_videoPlayerFragment_to_videosFragment"
             app:destination="@id/videosFragment" />
 
+        <action
+            android:id="@+id/action_videoPlayerFragment_to_privateFilesFragment"
+            app:destination="@id/privateFilesFragment" />
+
         <argument
             android:name="videoUri"
             app:argType="string" />
 
         <argument
             android:name="videoTitle"
-            app:argType="string"/>
+            app:argType="string[]"/>
 
         <argument
             android:name="isPublic"
             app:argType="boolean"/>
 
-        <action
-            android:id="@+id/action_videoPlayerFragment_to_privateFilesFragment"
-            app:destination="@id/privateFilesFragment" />
+        <argument
+            android:name="videoUriList"
+            app:argType="string[]" />
+
+        <argument
+            android:name="position"
+            app:argType="integer"/>
 
     </fragment>
+
     <fragment
         android:id="@+id/audioPlayerFragment"
         android:name="com.torx.torxplayer.fragments.AudioPlayerFragment"

@@ -221,10 +221,16 @@ class PrivateFilesFragment : Fragment() {
                         val video = videoList[position]
                         val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
                             video.contentUri,
-                            video.title,
-                            false
+                            videoList.map { it.title }.toTypedArray(),
+                            false,
+                            videoList.map { it.contentUri }.toTypedArray(),
+                            position
                         )
                         findNavController().navigate(action)
+                    }
+
+                    override fun onLongItemClick(position: Int) {
+
                     }
                 })
                 binding.privateFilesRV.apply {
@@ -345,6 +351,10 @@ class PrivateFilesFragment : Fragment() {
                             audio.uri, audioList.map { it.title }.toTypedArray(), false, audioList.map { it.uri }.toTypedArray(),
                             position)
                         findNavController().navigate(action)
+                    }
+
+                    override fun onLongItemClick(position: Int) {
+
                     }
                 })
                 binding.privateFilesRV.apply {
