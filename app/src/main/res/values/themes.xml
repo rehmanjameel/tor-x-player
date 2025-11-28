@@ -16,4 +16,15 @@
     <style name="CardView." parent="CardView">
         <item name="android:foreground">@drawable/card_bg_gradient</item>
     </style>
+
+    <style name="CustomCheckboxBrand" parent="@style/Widget.AppCompat.CompoundButton.CheckBox">
+        <item name="android:button">@drawable/checkbox_selector</item>
+
+        <!-- IMPORTANT: remove AppCompat tint -->
+        <item name="buttonTint">@null</item>
+        <item name="android:buttonTint">@null</item>
+
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+
 </resources>

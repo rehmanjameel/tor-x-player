@@ -38,6 +38,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
 import androidx.media3.ui.AspectRatioFrameLayout
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -90,6 +91,8 @@ class VideoPlayerFragment : Fragment() {
     ): View? {
         // Inflate the layout for this fragment
         binding = FragmentVideoPlayerBinding.inflate(inflater, container, false)
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility = View.GONE
+
         videoList = args.videoUriList.map { it.toUri() }
         videoTitleList = args.videoTitle.toList()
         currentIndex = args.position
@@ -204,6 +207,17 @@ class VideoPlayerFragment : Fragment() {
             }
             lastTapRight = now
         }
+
+        binding.player.findViewById<ImageView>(R.id.btnBackward).setOnClickListener {
+            val prevIndex = if (currentIndex - 1 < 0) videoList.size - 1 else currentIndex - 1
+            playVideoAt(prevIndex)
+        }
+
+        binding.player.findViewById<ImageView>(R.id.imageViewForward).setOnClickListener {
+            val nextIndex = (currentIndex + 1) % videoList.size
+            playVideoAt(nextIndex)
+        }
+
     }
 
     private fun showSkipAnimation(text: String) {
@@ -245,7 +259,14 @@ class VideoPlayerFragment : Fragment() {
                 super.onPlaybackStateChanged(playbackState)
                 when (playbackState) {
                     Player.STATE_ENDED -> {
-                        isVideoStopped = true
+//                        isVideoStopped = true
+                        // Play next video automatically
+                        val nextIndex = (currentIndex + 1) % videoList.size
+                        if (nextIndex != 0 || args.isPublic) { // optional: check if only list should play
+                            playVideoAt(nextIndex)
+                        } else {
+                            isVideoStopped = true
+                        }
 //                        exoPlayer!!.seekTo(0)
 //                        exoPlayer!!.play()
 //                        binding.player.findViewById<ImageView>(R.id.exo_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
@@ -413,9 +434,11 @@ class VideoPlayerFragment : Fragment() {
         if (lock) {
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.INVISIBLE
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.INVISIBLE
+            binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.INVISIBLE
         } else {
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.VISIBLE
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.VISIBLE
+            binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.VISIBLE
         }
     }
 
@@ -488,6 +511,23 @@ class VideoPlayerFragment : Fragment() {
             exoPlayer?.play()
         }
     }
+
+    private fun playVideoAt(index: Int) {
+        if (index < 0 || index >= videoList.size) return
+
+        currentIndex = index
+        val videoUri = videoList[currentIndex]
+        val videoTitle = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
+
+        binding.player.findViewById<TextView>(R.id.titleText).text = videoTitle
+        exoPlayer?.apply {
+            setMediaItem(MediaItem.fromUri(videoUri))
+            seekTo(0)
+            playWhenReady = true
+            prepare()
+        }
+    }
+
 
 
     @SuppressLint("ClickableViewAccessibility")

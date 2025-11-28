@@ -10,4 +10,7 @@ interface OptionsMenuClickListener {
 
     fun onLongItemClick(position: Int)
 
+    fun onSelectionChanged(count: Int)
+
+
 }

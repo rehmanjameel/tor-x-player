@@ -112,7 +112,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
-            android:layout_marginStart="30dp">
+            android:layout_marginBottom="5dp"
+            android:layout_marginStart="25dp">
 
             <ImageView
                 android:id="@+id/imageViewRotateLock"
@@ -120,7 +121,7 @@
                 android:layout_height="24dp"
                 android:src="@drawable/baseline_screen_lock_rotation_24"
                 android:theme="@style/ClickableView"
-                android:layout_marginStart="10dp"/>
+                android:layout_marginStart="5dp"/>
 
             <ImageView
                 android:id="@+id/imageViewBrightness"
@@ -129,7 +130,7 @@
                 android:src="@drawable/baseline_brightness_6_24"
                 android:theme="@style/ClickableView"
                 android:layout_toEndOf="@id/imageViewRotateLock"
-                android:layout_marginStart="10dp"/>
+                android:layout_marginStart="5dp"/>
 
             <ImageView
                 android:id="@+id/imageViewVolume"
@@ -138,7 +139,7 @@
                 android:src="@drawable/baseline_volume_up_24"
                 android:theme="@style/ClickableView"
                 android:layout_toStartOf="@id/btnAspectRatio"
-                android:layout_marginEnd="10dp"/>
+                android:layout_marginEnd="5dp"/>
 
             <TextView
                 android:id="@+id/setPlayBackSpeed"
@@ -146,10 +147,10 @@
                 android:layout_height="wrap_content"
                 android:text="1.0x"
                 android:gravity="center"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textColor="@color/white"
                 android:theme="@style/ClickableView"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="5dp"
                 android:layout_toStartOf="@id/imageViewVolume"/>
 
             <!-- NEW: Aspect Ratio Button -->
@@ -159,7 +160,7 @@
                 android:layout_height="24dp"
                 android:src="@drawable/baseline_aspect_ratio_24"
                 android:layout_toStartOf="@id/imageViewFullScreen"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="5dp"
                 android:theme="@style/ClickableView" />
 
             <ImageView
@@ -167,36 +168,9 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_alignParentEnd="true"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="5dp"
                 android:src="@drawable/baseline_fullscreen_24"
                 android:theme="@style/ClickableView"/>
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_centerVertical="true"
-                android:layout_toEndOf="@id/imageViewBrightness"
-                android:layout_marginStart="50dp">
-
-                <ImageView
-                    android:id="@+id/btnBackward"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:src="@drawable/baseline_fast_rewind_24"
-                    android:layout_marginEnd="10dp"
-                    android:theme="@style/ClickableView" />
-
-                <ImageView
-                    android:id="@+id/imageViewForward"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="10dp"
-                    app:tint="@color/white"
-                    android:src="@drawable/baseline_fast_forward_24"
-                    android:theme="@style/ClickableView"/>
-
-            </LinearLayout>
 
         </RelativeLayout>
 
@@ -295,6 +269,35 @@
         android:theme="@style/ClickableView"
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="15dp"/>
+
+    <LinearLayout
+        android:id="@+id/ffbLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_centerInParent="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="10dp"
+        android:layout_marginStart="0dp">
+
+        <ImageView
+            android:id="@+id/btnBackward"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/baseline_fast_rewind_24"
+            android:layout_marginEnd="10dp"
+            android:theme="@style/ClickableView" />
+
+        <ImageView
+            android:id="@+id/imageViewForward"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="10dp"
+            app:tint="@color/white"
+            android:src="@drawable/baseline_fast_forward_24"
+            android:theme="@style/ClickableView"/>
+
+    </LinearLayout>
 
     <View
         android:id="@+id/tapLeft"
