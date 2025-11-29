@@ -119,7 +119,7 @@
                 android:id="@+id/imageViewRotateLock"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:src="@drawable/baseline_screen_lock_rotation_24"
+                android:src="@drawable/baseline_screen_rotation_24"
                 android:theme="@style/ClickableView"
                 android:layout_marginStart="5dp"/>
 
@@ -181,10 +181,10 @@
         android:id="@+id/brightnessLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/linearLayoutControlUp"
+        android:layout_above="@+id/skipText"
         android:layout_centerHorizontal="true"
         android:orientation="horizontal"
-        android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp"
         android:background="@color/volume_bg"
         android:visibility="gone"
         android:padding="10dp"
@@ -199,14 +199,15 @@
 
         <SeekBar
             android:id="@+id/seekBarBrightness"
-            android:layout_width="120dp"
-            android:layout_height="5dp"
+            android:layout_width="150dp"
+            android:layout_height="20dp"
             android:max="100"
             android:progress="50"
             android:rotation="0"
             android:layout_gravity="center_vertical"
             android:thumb="@drawable/seekbar_thumb"
-            android:progressDrawable="@drawable/custom_seekbar"/>
+            android:progressDrawable="@drawable/custom_seekbar"
+            />
 
         <TextView
             android:id="@+id/brightnessValue"

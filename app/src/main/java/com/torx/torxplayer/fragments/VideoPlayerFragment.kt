@@ -1,6 +1,7 @@
 package com.torx.torxplayer.fragments
 
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
@@ -8,6 +9,8 @@ import android.hardware.SensorManager
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -84,6 +87,11 @@ class VideoPlayerFragment : Fragment() {
     private val skipMs = 10000L // 10 sec
     private var isRotationLocked = false
 
+    private val hideBrightnessRunnable = Runnable {
+        brightnessLayout.visibility = View.GONE
+    }
+
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -114,8 +122,10 @@ class VideoPlayerFragment : Fragment() {
         addBackForward()
         setOrientation()
         initRotationLockButton()
-        setupSwipeControls()
+//        setupSwipeControls()
 
+        setBrightness(50)
+        seekBarBrightness.progress = 50
         binding.player.findViewById<ImageView>(R.id.custom_play).setOnClickListener {
             playPauseVideo()
         }
@@ -135,6 +145,14 @@ class VideoPlayerFragment : Fragment() {
                         findNavController().navigate(R.id.action_videoPlayerFragment_to_privateFilesFragment)
                     }
                     stopSeekbarUpdater()
+
+                    //  Lock orientation at current state
+                    val currentOrientation = resources.configuration.orientation
+
+                    if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+                        requireActivity().requestedOrientation =
+                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    }
                 }
             }
         )
@@ -216,6 +234,38 @@ class VideoPlayerFragment : Fragment() {
         binding.player.findViewById<ImageView>(R.id.imageViewForward).setOnClickListener {
             val nextIndex = (currentIndex + 1) % videoList.size
             playVideoAt(nextIndex)
+        }
+
+        binding.player.findViewById<ImageView>(R.id.imageViewVolume).setOnClickListener {
+            val audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            audioManager.adjustVolume(AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI)
+        }
+
+        // Hide brightness slider when tapping anywhere
+        binding.root.setOnClickListener {
+            brightnessLayout.visibility = View.GONE
+            handler.removeCallbacks(hideBrightnessRunnable)
+        }
+
+        seekBarBrightness.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+//                val layoutParams = requireActivity().window.attributes
+//                layoutParams.screenBrightness = progress / 100f
+//                requireActivity().window.attributes = layoutParams
+                setBrightness(progress)
+                brightnessValue.text = "${progress.toInt()}%"
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        binding.player.findViewById<ImageView>(R.id.imageViewBrightness).setOnClickListener {
+            brightnessLayout.visibility = View.VISIBLE
+
+            // Reset hide timer
+            handler.removeCallbacks(hideBrightnessRunnable)
+            handler.postDelayed(hideBrightnessRunnable, 3500) // 3.5 seconds
         }
 
     }
@@ -405,7 +455,7 @@ class VideoPlayerFragment : Fragment() {
             isRotationLocked = !isRotationLocked
 
             if (isRotationLocked) {
-                // 🔒 Lock orientation at current state
+                //  Lock orientation at current state
                 val currentOrientation = resources.configuration.orientation
 
                 if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
@@ -417,15 +467,15 @@ class VideoPlayerFragment : Fragment() {
                 }
 
                 btnRotateLock.setImageResource(R.drawable.baseline_screen_lock_rotation_24)
-                Toast.makeText(requireContext(), "Rotation Locked", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "Rotation Locked", Toast.LENGTH_SHORT).show()
 
             } else {
-                // 🔓 Unlock orientation (follow sensors)
+                //  Unlock orientation (follow sensors)
                 requireActivity().requestedOrientation =
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR
 
                 btnRotateLock.setImageResource(R.drawable.baseline_screen_rotation_24)
-                Toast.makeText(requireContext(), "Rotation Unlocked", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "Rotation Unlocked", Toast.LENGTH_SHORT).show()
             }
         }
     }
