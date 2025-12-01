@@ -108,6 +108,7 @@
                     android:padding="10dp"
                     android:layout_gravity="bottom"
                     android:layout_weight="1"
+                    android:visibility="gone"
                     android:theme="@style/ClickableView"
                     />
 

@@ -47,7 +47,7 @@ class VideosAdapter(
             .error(R.drawable.baseline_video_library_24)
             .into(holder.thumbnail)
 
-        holder.moreOptions.visibility = if (isSelectionMode) View.GONE else View.VISIBLE
+//        holder.moreOptions.visibility = if (isSelectionMode) View.GONE else View.VISIBLE
         holder.checkBox.visibility = if (isSelectionMode) View.VISIBLE else View.INVISIBLE
         holder.checkBox.setOnCheckedChangeListener(null)
         holder.checkBox.isChecked = selectedItems.contains(position)
