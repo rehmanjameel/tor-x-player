@@ -64,6 +64,12 @@ class VideosFragment : Fragment() {
         setupDonationClick()
         setupDeleteLauncher()
 
+        //open the download screen
+        binding.downloadIcon.setOnClickListener {
+            val action = VideosFragmentDirections.actionVideosFragmentToDownloadFragment()
+            findNavController().navigate(action)
+        }
+
         return binding.root
     }
 
@@ -191,20 +197,20 @@ class VideosFragment : Fragment() {
     }
 
     private fun setupMainMenu() {
-        binding.mainMenu.setOnClickListener { view ->
-            val popupMenu = PopupMenu(requireContext(), view)
-            popupMenu.inflate(R.menu.main_menu)
-            popupMenu.setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    R.id.startVersion -> {
-                        Toast.makeText(requireContext(), "App version: ${getAppVersionName(requireContext())}", Toast.LENGTH_SHORT).show()
-                        true
-                    }
-                    else -> false
-                }
-            }
-            popupMenu.show()
-        }
+//        binding.mainMenu.setOnClickListener { view ->
+//            val popupMenu = PopupMenu(requireContext(), view)
+//            popupMenu.inflate(R.menu.main_menu)
+//            popupMenu.setOnMenuItemClickListener { item ->
+//                when (item.itemId) {
+//                    R.id.startVersion -> {
+//                        Toast.makeText(requireContext(), "App version: ${getAppVersionName(requireContext())}", Toast.LENGTH_SHORT).show()
+//                        true
+//                    }
+//                    else -> false
+//                }
+//            }
+//            popupMenu.show()
+//        }
     }
 
     private fun setupBottomActions() {

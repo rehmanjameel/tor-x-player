@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black"
+    android:background="@color/bottom_bar_bg"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".fragments.DownloadFragment">
 
@@ -26,7 +26,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/backArrow"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:layout_marginEnd="10dp">
 
             <EditText
                 android:id="@+id/searchTIET"
@@ -35,10 +36,13 @@
                 android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:background="@color/white"
-                android:hint="search video"
+                android:hint="Search or paste link here..."
                 android:maxLines="1"
-                android:padding="10dp"
-                android:textColor="@color/white"
+                android:drawableStart="@drawable/google"
+                android:drawablePadding="10dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:textColor="@color/black"
                 android:textColorHint="@color/gray" />
 
             <TextView
@@ -49,34 +53,150 @@
                 android:text="SEARCH"
                 android:textColor="@color/green"
                 android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:visibility="gone"/>
 
         </LinearLayout>
 
     </RelativeLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:weightSum="4"
-        android:layout_below="@id/searchLayout">
+        android:layout_marginTop="20dp"
+        android:layout_below="@id/searchLayout"
+        style="@style/ClickableView"
+        >
 
-        <ImageView
+        <LinearLayout
+            android:id="@+id/fbLayout"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            <ImageView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:src="@drawable/facebook"
+                />
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:text="FDownloader"
+                android:textSize="11sp"
+                android:textColor="@color/white"
+                android:visibility="visible"/>
 
-        <ImageView
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ytLayout"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            style="@style/ClickableView"
+            >
+
+            <ImageView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:src="@drawable/youtube"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:text="FDownloader"
+                android:textSize="11sp"
+                android:textColor="@color/white"
+                android:visibility="visible"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/instaLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            style="@style/ClickableView"
+            >
+
+            <ImageView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:src="@drawable/social"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:text="FDownloader"
+                android:textSize="11sp"
+                android:textColor="@color/white"
+                android:visibility="visible"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tiktokLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            style="@style/ClickableView"
+            >
+
+            <ImageView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:src="@drawable/tiktok"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:text="FDownloader"
+                android:textSize="11sp"
+                android:textColor="@color/white"
+                android:visibility="visible"/>
+
+        </LinearLayout>
 
     </LinearLayout>
+
+    <WebView
+        android:id="@+id/mediaWV"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        />
+    <View
+        android:id="@+id/webviewOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bottom_bar_bg"
+        android:visibility="gone"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:indeterminateTint="@color/red"
+        android:visibility="gone"/>
 
 </RelativeLayout>

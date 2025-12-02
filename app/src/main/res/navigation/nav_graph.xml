@@ -13,6 +13,9 @@
         <action
             android:id="@+id/action_videosFragment_to_videoPlayerFragment"
             app:destination="@id/videoPlayerFragment" />
+        <action
+            android:id="@+id/action_videosFragment_to_downloadFragment"
+            app:destination="@id/downloadFragment" />
     </fragment>
 
     <fragment
@@ -103,5 +106,14 @@
         <action
             android:id="@+id/action_audioPlayerFragment_to_privateFilesFragment"
             app:destination="@id/privateFilesFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/downloadFragment"
+        android:name="com.torx.torxplayer.fragments.DownloadFragment"
+        android:label="fragment_download"
+        tools:layout="@layout/fragment_download" >
+        <action
+            android:id="@+id/action_downloadFragment_to_videosFragment"
+            app:destination="@id/videosFragment" />
     </fragment>
 </navigation>
