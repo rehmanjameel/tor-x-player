@@ -18,7 +18,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -227,8 +229,53 @@ class AudiosFragment : Fragment() {
             showMainMenu(it)
         }
 
+        binding.tabAudios.setOnClickListener { v ->
+            highlightTab(binding.tabAudios)
+
+        }
+
+        binding.tabFolder.setOnClickListener { v ->
+            highlightTab(binding.tabFolder)
+
+        }
+
+        binding.tabPlaylist.setOnClickListener { v ->
+            highlightTab(binding.tabPlaylist)
+
+        }
+
     }
 
+    private fun highlightTab(selected: TextView) {
+
+        // Reset underline visibility
+        binding.lineAudios.visibility = View.GONE
+        binding.lineFolder.visibility = View.GONE
+        binding.linePlaylist.visibility = View.GONE
+
+        // Reset colors
+        binding.tabAudios.setTextColor(resources.getColor(R.color.white))
+        binding.tabFolder.setTextColor(resources.getColor(R.color.white))
+        binding.tabPlaylist.setTextColor(resources.getColor(R.color.white))
+
+        // Apply selected underline + color
+        when (selected) {
+            binding.tabAudios -> {
+                binding.lineAudios.visibility = View.VISIBLE
+                binding.tabAudios.setTextColor(resources.getColor(R.color.green))
+            }
+
+            binding.tabFolder -> {
+                binding.lineFolder.visibility = View.VISIBLE
+                binding.tabFolder.setTextColor(resources.getColor(R.color.green))
+            }
+
+            binding.tabPlaylist -> {
+                binding.linePlaylist.visibility = View.VISIBLE
+                binding.tabPlaylist.setTextColor(resources.getColor(R.color.green))
+            }
+        }
+    }
     private fun showMainMenu(view: View) {
         val popupMenu = PopupMenu(requireContext(), view)
         popupMenu.inflate(R.menu.main_menu)

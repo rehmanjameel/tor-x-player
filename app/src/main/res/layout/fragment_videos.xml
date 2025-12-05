@@ -32,8 +32,8 @@
             android:layout_centerVertical="true"
             android:layout_toEndOf="@id/bannerId"
             android:paddingTop="7dp"
-            android:visibility="gone"
-            android:src="@drawable/donation" />
+            android:src="@drawable/donation"
+            android:visibility="gone" />
 
         <ImageView
             android:id="@+id/downloadIcon"
@@ -108,56 +108,149 @@
 
     </RelativeLayout>
 
-    <LinearLayout
+    <RelativeLayout
+        android:id="@+id/historyLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         app:layout_constraintTop_toBottomOf="@id/topLayout">
 
-        <RelativeLayout
+        <TextView
+            android:id="@+id/historyTxt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:padding="10dp"
+            android:text="History"
+            android:textColor="@color/white" />
+
+        <ImageView
+            android:id="@+id/delHistoryIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:padding="10dp"
+            android:src="@drawable/baseline_delete_24" />
+
+        <androidx.recyclerview.widget.RecyclerView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/historyTxt"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <TextView
+            android:id="@+id/historyEmptyView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/historyTxt"
+            android:layout_centerInParent="true"
+            android:text="Your video history will display here"
+            android:textColor="@color/white"
+            android:textSize="11sp"
+            android:visibility="visible" />
+
+    </RelativeLayout>
+
+    <!-- ==================== CUSTOM TABS ==================== -->
+    <RelativeLayout
+        android:id="@+id/customTabs"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/historyLayout">
+
+        <!-- VIDEO TAB -->
+        <LinearLayout
+            android:id="@+id/tabVideosLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:orientation="vertical"
+            android:padding="10dp">
+
             <TextView
-                android:id="@+id/historyTxt"
+                android:id="@+id/tabVideos"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="History"
-                android:textColor="@color/white"
-                android:layout_alignParentStart="true"
-                android:padding="10dp"/>
+                android:text="Video"
+                android:textColor="@color/green"
+                android:textStyle="bold" />
 
-            <ImageView
-                android:id="@+id/delHistoryIcon"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/baseline_delete_24"
-                android:layout_alignParentEnd="true"
-                android:padding="10dp"/>
-
-            <androidx.recyclerview.widget.RecyclerView
+            <!-- Underline -->
+            <View
+                android:id="@+id/lineVideos"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_below="@+id/historyTxt"
-                android:orientation="horizontal"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                />
+                android:layout_height="2dp"
+                android:background="@color/green"
+                android:visibility="visible" />
+        </LinearLayout>
+
+        <!-- FOLDER TAB -->
+        <LinearLayout
+            android:id="@+id/tabFolderLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:layout_toEndOf="@id/tabVideosLayout"
+            android:orientation="vertical"
+            android:padding="10dp">
 
             <TextView
-                android:id="@+id/historyEmptyView"
+                android:id="@+id/tabFolder"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Your video history will display here"
-                android:textColor="@color/white"
-                android:visibility="visible"
-                android:textSize="11sp"
-                android:layout_below="@+id/historyTxt"
-                android:layout_centerInParent="true" />
+                android:text="Folder"
+                android:textColor="@color/white" />
 
-        </RelativeLayout>
+            <View
+                android:id="@+id/lineFolder"
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@color/green"
+                android:visibility="gone" />
+        </LinearLayout>
 
-    </LinearLayout>
+
+        <!-- PLAYLIST TAB -->
+        <LinearLayout
+            android:id="@+id/tabPlaylistLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:layout_toEndOf="@id/tabFolderLayout"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/tabPlaylist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Playlist"
+                android:textColor="@color/white" />
+
+            <View
+                android:id="@+id/linePlaylist"
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@color/green"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Swap Icon -->
+        <ImageView
+            android:id="@+id/swapIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:padding="10dp"
+            android:src="@drawable/baseline_swap_vert_24"
+            app:tint="@color/white" />
+
+    </RelativeLayout>
+
     <!-- ==================== SELECT ALL ==================== -->
     <CheckBox
         android:id="@+id/selectAllCheckbox"
@@ -176,11 +269,28 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/videoRV"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="200dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="00dp"
         android:paddingBottom="0dp"
-        app:layout_constraintBottom_toTopOf="@id/bottomActionBar"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/customTabs" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/videoFolderRV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="00dp"
+        android:paddingBottom="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/customTabs" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/selectedVideosRV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="00dp"
+        android:paddingBottom="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/customTabs" />
 
     <!-- ================= EMPTY VIEW ================= -->
     <TextView
@@ -252,7 +362,6 @@
             android:theme="@style/ClickableView">
 
             <ImageView
-
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/baseline_playlist_play_24"
@@ -275,7 +384,6 @@
             android:theme="@style/ClickableView">
 
             <ImageView
-
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/outline_visibility_lock_24"

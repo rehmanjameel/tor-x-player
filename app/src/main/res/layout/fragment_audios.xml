@@ -135,15 +135,11 @@
 
     </RelativeLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintTop_toBottomOf="@id/topLayout">
-
         <RelativeLayout
+            android:id="@+id/historyLayout"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/topLayout">
             <TextView
                 android:id="@+id/historyTxt"
                 android:layout_width="wrap_content"
@@ -184,16 +180,112 @@
 
         </RelativeLayout>
 
-    </LinearLayout>
+    <!-- ==================== CUSTOM TABS ==================== -->
+    <RelativeLayout
+        android:id="@+id/customTabs"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/historyLayout">
+
+        <!-- VIDEO TAB -->
+        <LinearLayout
+            android:id="@+id/tabVideosLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/tabAudios"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Audio"
+                android:textColor="@color/green"
+                android:textStyle="bold" />
+
+            <!-- Underline -->
+            <View
+                android:id="@+id/lineAudios"
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@color/green"
+                android:visibility="visible" />
+        </LinearLayout>
+
+        <!-- FOLDER TAB -->
+        <LinearLayout
+            android:id="@+id/tabFolderLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:layout_toEndOf="@id/tabVideosLayout"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/tabFolder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Folder"
+                android:textColor="@color/white" />
+
+            <View
+                android:id="@+id/lineFolder"
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@color/green"
+                android:visibility="gone" />
+        </LinearLayout>
+
+
+        <!-- PLAYLIST TAB -->
+        <LinearLayout
+            android:id="@+id/tabPlaylistLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:layout_toEndOf="@id/tabFolderLayout"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/tabPlaylist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Playlist"
+                android:textColor="@color/white" />
+
+            <View
+                android:id="@+id/linePlaylist"
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@color/green"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Swap Icon -->
+        <ImageView
+            android:id="@+id/swapIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:padding="10dp"
+            android:src="@drawable/baseline_swap_vert_24"
+            app:tint="@color/white" />
+
+    </RelativeLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/audioRV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="200dp"
+        android:layout_marginTop="0dp"
         android:visibility="visible"
         android:paddingBottom="90dp"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/customTabs"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         />

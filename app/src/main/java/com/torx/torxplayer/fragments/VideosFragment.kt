@@ -12,11 +12,13 @@ import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.util.Log.v
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupMenu
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.activity.result.ActivityResultLauncher
@@ -34,19 +36,23 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
+import com.torx.torxplayer.adapters.VideoFolderAdapter
 import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentVideosBinding
+import com.torx.torxplayer.model.VideoFolder
 import com.torx.torxplayer.model.VideosModel
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 @RequiresApi(Build.VERSION_CODES.R)
 class VideosFragment : Fragment() {
 
     private lateinit var binding: FragmentVideosBinding
     private lateinit var videoAdapter: VideosAdapter
+    private lateinit var videoFolderAdapter: VideoFolderAdapter
     private var videoList = mutableListOf<VideosModel>()
 
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
@@ -82,37 +88,55 @@ class VideosFragment : Fragment() {
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
 
-        videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
-            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                performOptionsMenuClick(position, anchorView)
-            }
+        videoAdapter =
+            VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                    performOptionsMenuClick(position, anchorView)
+                }
 
-            override fun onItemClick(position: Int) {
-                val video = videoList[position]
-                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                    video.contentUri,
-                    videoList.map { it.title }.toTypedArray(),
-                    true,
-                    videoList.map { it.contentUri }.toTypedArray(),
-                    position
-                )
-                findNavController().navigate(action)
-            }
+                override fun onItemClick(position: Int) {
+                    val video = videoList[position]
+                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                        video.contentUri,
+                        videoList.map { it.title }.toTypedArray(),
+                        true,
+                        videoList.map { it.contentUri }.toTypedArray(),
+                        position
+                    )
+                    findNavController().navigate(action)
+                }
 
-            override fun onLongItemClick(position: Int) {
-                enterSelectionMode(position)
-            }
+                override fun onLongItemClick(position: Int) {
+                    enterSelectionMode(position)
+                }
 
-            override fun onSelectionChanged(count: Int) {
-                binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
-            }
-        })
+                override fun onSelectionChanged(count: Int) {
+                    binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
+                }
+            })
         binding.videoRV.adapter = videoAdapter
+
+        setupFolderAdapter()
 
         observeVideos()
         checkMediaPermission()
         setupMainMenu()
         setupBottomActions()
+
+        binding.tabVideos.setOnClickListener { v ->
+            highlightTab(binding.tabVideos)
+
+        }
+
+        binding.tabFolder.setOnClickListener { v ->
+            highlightTab(binding.tabFolder)
+
+        }
+
+        binding.tabPlaylist.setOnClickListener { v ->
+            highlightTab(binding.tabPlaylist)
+
+        }
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (videoAdapter.isSelectionMode) {
@@ -127,9 +151,80 @@ class VideosFragment : Fragment() {
 
     /** ------------------ SETUP FUNCTIONS ------------------ **/
 
+    private fun highlightTab(selected: TextView) {
+
+        // Reset underline visibility
+        binding.lineVideos.visibility = View.GONE
+        binding.lineFolder.visibility = View.GONE
+        binding.linePlaylist.visibility = View.GONE
+
+        // Reset colors
+        binding.tabVideos.setTextColor(resources.getColor(R.color.white))
+        binding.tabFolder.setTextColor(resources.getColor(R.color.white))
+        binding.tabPlaylist.setTextColor(resources.getColor(R.color.white))
+
+        // Apply selected underline + color
+        when (selected) {
+            binding.tabVideos -> {
+                binding.lineVideos.visibility = View.VISIBLE
+                binding.tabVideos.setTextColor(resources.getColor(R.color.green))
+                binding.videoRV.visibility = View.VISIBLE
+                binding.videoFolderRV.visibility = View.GONE
+                binding.selectedVideosRV.visibility = View.GONE
+            }
+
+            binding.tabFolder -> {
+                binding.lineFolder.visibility = View.VISIBLE
+                binding.tabFolder.setTextColor(resources.getColor(R.color.green))
+                binding.videoRV.visibility = View.GONE
+                binding.videoFolderRV.visibility = View.VISIBLE
+                binding.selectedVideosRV.visibility = View.GONE
+            }
+
+            binding.tabPlaylist -> {
+                binding.linePlaylist.visibility = View.VISIBLE
+                binding.tabPlaylist.setTextColor(resources.getColor(R.color.green))
+                binding.videoRV.visibility = View.GONE
+                binding.videoFolderRV.visibility = View.GONE
+                binding.selectedVideosRV.visibility = View.VISIBLE
+            }
+        }
+    }
+
     private fun setupRecyclerView() {
-        binding.videoRV.layoutManager = GridLayoutManager(requireContext(), 1, LinearLayoutManager.VERTICAL, false)
+        binding.videoRV.layoutManager =
+            GridLayoutManager(requireContext(), 1, LinearLayoutManager.VERTICAL, false)
         binding.videoRV.setHasFixedSize(true)
+
+        binding.videoFolderRV.layoutManager =
+            GridLayoutManager(requireContext(), 2, LinearLayoutManager.VERTICAL, false)
+        binding.videoRV.setHasFixedSize(true)
+
+        binding.selectedVideosRV.layoutManager =
+            GridLayoutManager(requireContext(), 1, LinearLayoutManager.VERTICAL, false)
+        binding.videoRV.setHasFixedSize(true)
+
+    }
+
+    private fun setupFolderAdapter() {
+        val folderList = getVideoFolders(requireContext())
+
+        videoFolderAdapter = VideoFolderAdapter(requireContext(), folderList) { folder ->
+            // handle folder click
+            // Example:
+            val videosInFolder = videoList.filter {
+                it.path.startsWith(folder.folderPath)
+            }
+        }
+
+        if (folderList.isNotEmpty()) {
+            binding.videoFolderRV.adapter = videoFolderAdapter
+        } else {
+            binding.videoFolderRV.visibility = View.GONE
+            binding.emptyView.visibility = View.VISIBLE
+            binding.emptyView.text = "No folders found"
+        }
+
     }
 
     private fun setupSearch() {
@@ -140,7 +235,8 @@ class VideosFragment : Fragment() {
             binding.emptyView.visibility = View.GONE
             binding.searchTIET.text.clear()
             binding.searchTIET.requestFocus()
-            val imm = requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm =
+                requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(binding.searchTIET, InputMethodManager.SHOW_IMPLICIT)
         }
 
@@ -150,7 +246,8 @@ class VideosFragment : Fragment() {
             binding.videoRV.visibility = View.VISIBLE
             binding.emptyView.visibility = View.GONE
             videoAdapter.filterList(videoList)
-            val imm = requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm =
+                requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(binding.searchTIET.windowToken, 0)
             binding.searchTIET.clearFocus()
         }
@@ -175,7 +272,11 @@ class VideosFragment : Fragment() {
                 val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                 startActivity(intent)
             } catch (e: Exception) {
-                Toast.makeText(requireActivity(), "No browser found to open the link", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireActivity(),
+                    "No browser found to open the link",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -189,7 +290,11 @@ class VideosFragment : Fragment() {
                         videoList.removeAll { it.contentUri == uri.toString() }
                         videoAdapter.notifyDataSetChanged()
                     }
-                    Toast.makeText(requireContext(), "File deleted successfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "File deleted successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 } else {
                     Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
                 }
@@ -247,7 +352,8 @@ class VideosFragment : Fragment() {
         videoAdapter.notifyDataSetChanged()
         binding.bottomActionBar.visibility = View.VISIBLE
         binding.selectAllCheckbox.visibility = View.VISIBLE
-        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility = View.GONE
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+            View.GONE
 
     }
 
@@ -257,7 +363,8 @@ class VideosFragment : Fragment() {
         videoAdapter.notifyDataSetChanged()
         binding.selectAllCheckbox.visibility = View.GONE
         binding.bottomActionBar.visibility = View.GONE
-        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility = View.VISIBLE
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+            View.VISIBLE
 
     }
 
@@ -316,10 +423,12 @@ class VideosFragment : Fragment() {
                     videoAdapter.notifyItemRemoved(position)
                     true
                 }
+
                 R.id.delete -> {
                     deleteFileFromStorage(video)
                     true
                 }
+
                 else -> false
             }
         }
@@ -335,7 +444,8 @@ class VideosFragment : Fragment() {
     private fun deleteFileFromStorage(video: VideosModel) {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
+                val rowsDeleted =
+                    requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
                 if (rowsDeleted > 0) {
                     viewModel.deleteVideosByUri(video.contentUri)
                     videoList.remove(video)
@@ -344,7 +454,8 @@ class VideosFragment : Fragment() {
                 }
             } else {
                 val collection = arrayListOf(video.contentUri.toUri())
-                val pendingIntent = MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
+                val pendingIntent =
+                    MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
                 val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
                 lastDeletedUri = video.contentUri.toUri()
                 deleteRequestLauncher.launch(request)
@@ -382,10 +493,15 @@ class VideosFragment : Fragment() {
             android.Manifest.permission.READ_MEDIA_VIDEO else
             android.Manifest.permission.READ_EXTERNAL_STORAGE
 
-        if (ContextCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             lifecycleScope.launch {
                 val currentVideos = withContext(Dispatchers.IO) { viewModel.getVideoCount() }
-                if (currentVideos == 0) loadMediaFilesIntoDB() else binding.progressBar.visibility = View.GONE
+                if (currentVideos == 0) loadMediaFilesIntoDB() else binding.progressBar.visibility =
+                    View.GONE
             }
         } else storagePermissionLauncher.launch(permission)
     }
@@ -443,14 +559,77 @@ class VideosFragment : Fragment() {
                 val path = it.getString(pathCol)
                 val contentUri = ContentUris.withAppendedId(queryUri, id)
 
-                mediaList.add(VideosModel(id, name, contentUri.toString(), date, mime, dur, folder, size.toString(), path))
+                mediaList.add(
+                    VideosModel(
+                        id,
+                        name,
+                        contentUri.toString(),
+                        date,
+                        mime,
+                        dur,
+                        folder,
+                        size.toString(),
+                        path
+                    )
+                )
             }
         }
         return mediaList
     }
 
+    fun getVideoFolders(context: Context): List<VideoFolder> {
+        val folderMap = HashMap<String, MutableList<String>>() // folderPath -> list of videos
+
+        val projection = arrayOf(
+            MediaStore.Video.Media._ID,
+            MediaStore.Video.Media.DATA
+        )
+
+        val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        val sortOrder = MediaStore.Video.Media.DATE_ADDED + " DESC"
+
+        val cursor = context.contentResolver.query(
+            uri, projection, null, null, sortOrder
+        )
+
+        cursor?.use {
+            val dataCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+
+            while (it.moveToNext()) {
+                val fullPath = it.getString(dataCol)
+
+                // Extract folder path
+                val file = File(fullPath)
+                val folder = file.parent ?: continue
+
+                if (!folderMap.containsKey(folder)) {
+                    folderMap[folder] = mutableListOf()
+                }
+                folderMap[folder]?.add(fullPath)
+            }
+        }
+
+        // Convert folderMap to ArrayList of VideoFolder
+        val folderList = ArrayList<VideoFolder>()
+        for ((folderPath, videos) in folderMap) {
+            folderList.add(
+                VideoFolder(
+                    folderName = File(folderPath).name,
+                    folderPath = folderPath,
+                    videoCount = videos.size
+                )
+            )
+        }
+
+        return folderList
+    }
+
     private fun getAppVersionName(context: Context): String? {
-        return try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { null }
+        return try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        } catch (e: Exception) {
+            null
+        }
     }
 
 }
