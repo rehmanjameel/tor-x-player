@@ -25,6 +25,9 @@ class VideosAdapter(
 
     var isSelectionMode = false
     val selectedItems = mutableSetOf<Int>()
+    var currentList = mutableListOf<VideosModel>()
+        private set
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideoViewHolder {
         val view = LayoutInflater.from(context).inflate(R.layout.video_layout, parent, false)

@@ -25,6 +25,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
@@ -88,145 +90,132 @@ class VideosFragment : Fragment() {
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
 
-        videoAdapter =
-            VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
-                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                    performOptionsMenuClick(position, anchorView)
-                }
-
-                override fun onItemClick(position: Int) {
-                    val video = videoList[position]
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                        video.contentUri,
-                        videoList.map { it.title }.toTypedArray(),
-                        true,
-                        videoList.map { it.contentUri }.toTypedArray(),
-                        position
-                    )
-                    findNavController().navigate(action)
-                }
-
-                override fun onLongItemClick(position: Int) {
-                    enterSelectionMode(position)
-                }
-
-                override fun onSelectionChanged(count: Int) {
-                    binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
-                }
-            })
-        binding.videoRV.adapter = videoAdapter
-
+        setupVideoAdapter()
         setupFolderAdapter()
-
+        setupRecyclerView()
+        setupTabClicks()
+        setupBackPress()
+        setupFolderBack()
         observeVideos()
         checkMediaPermission()
         setupMainMenu()
         setupBottomActions()
-
-        binding.tabVideos.setOnClickListener { v ->
-            highlightTab(binding.tabVideos)
-
-        }
-
-        binding.tabFolder.setOnClickListener { v ->
-            highlightTab(binding.tabFolder)
-
-        }
-
-        binding.tabPlaylist.setOnClickListener { v ->
-            highlightTab(binding.tabPlaylist)
-
-        }
-
-        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
-            if (videoAdapter.isSelectionMode) {
-                exitSelectionMode()
-            } else {
-                // Close the app
-                requireActivity().finish()
-            }
-        }
-
-        binding.folderBackArrow.setOnClickListener {
-            binding.videoRV.visibility = View.GONE
-            binding.videoFolderRV.visibility = View.VISIBLE
-            binding.folderBackLayout.visibility = View.GONE
-            binding.selectedVideosRV.visibility = View.GONE
-
-        }
-
     }
 
-    /** ------------------ SETUP FUNCTIONS ------------------ **/
+    private fun setupVideoAdapter() {
+        videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                performOptionsMenuClick(position, anchorView)
+            }
+
+            override fun onItemClick(position: Int) {
+                val videos = videoAdapter.currentList
+                val video = videos[position]
+                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                    video.contentUri,
+                    videos.map { it.title }.toTypedArray(),
+                    true,
+                    videos.map { it.contentUri }.toTypedArray(),
+                    position
+                )
+                findNavController().navigate(action)
+            }
+
+            override fun onLongItemClick(position: Int) {
+                enterSelectionMode(position)
+            }
+
+            override fun onSelectionChanged(count: Int) {
+                binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
+            }
+        })
+
+        binding.videoRV.adapter = videoAdapter
+    }
+
+    private fun setupRecyclerView() {
+        binding.videoRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 1)
+            setHasFixedSize(true)
+        }
+
+        binding.videoFolderRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 2)
+            setHasFixedSize(true)
+        }
+
+        binding.selectedVideosRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 1)
+            setHasFixedSize(true)
+        }
+    }
+
+    /** ------------------ TAB HANDLER ------------------ **/
+    private fun setupTabClicks() {
+        binding.tabVideos.setOnClickListener { highlightTab(binding.tabVideos) }
+        binding.tabFolder.setOnClickListener { highlightTab(binding.tabFolder) }
+        binding.tabPlaylist.setOnClickListener { highlightTab(binding.tabPlaylist) }
+    }
 
     private fun highlightTab(selected: TextView) {
 
-        // Reset underline visibility
-        binding.lineVideos.visibility = View.GONE
-        binding.lineFolder.visibility = View.GONE
-        binding.linePlaylist.visibility = View.GONE
+        // reset underlines
+        listOf(binding.lineVideos, binding.lineFolder, binding.linePlaylist)
+            .forEach { it.visibility = View.GONE }
 
-        // Reset colors
-        binding.tabVideos.setTextColor(resources.getColor(R.color.white))
-        binding.tabFolder.setTextColor(resources.getColor(R.color.white))
-        binding.tabPlaylist.setTextColor(resources.getColor(R.color.white))
+        // reset colors
+        listOf(binding.tabVideos, binding.tabFolder, binding.tabPlaylist)
+            .forEach { it.setTextColor(resources.getColor(R.color.white)) }
 
-        // Apply selected underline + color
         when (selected) {
             binding.tabVideos -> {
                 binding.lineVideos.visibility = View.VISIBLE
-                binding.tabVideos.setTextColor(resources.getColor(R.color.green))
-                binding.videoRV.visibility = View.VISIBLE
-                binding.videoFolderRV.visibility = View.GONE
-                binding.selectedVideosRV.visibility = View.GONE
-                binding.folderBackLayout.visibility = View.GONE
+                selected.setTextColor(resources.getColor(R.color.green))
+                showSection(video = true, folder = false, selected = false, showBack = false)
+                setVideoRvTop(R.id.customTabs)
             }
 
             binding.tabFolder -> {
                 binding.lineFolder.visibility = View.VISIBLE
-                binding.tabFolder.setTextColor(resources.getColor(R.color.green))
-                binding.videoRV.visibility = View.GONE
-                binding.videoFolderRV.visibility = View.VISIBLE
-                binding.folderBackLayout.visibility = View.GONE
-                binding.selectedVideosRV.visibility = View.GONE
+                selected.setTextColor(resources.getColor(R.color.green))
+                showSection(video = false, folder = true, selected = false, showBack = false)
+                setVideoRvTop(R.id.customTabs)
             }
 
             binding.tabPlaylist -> {
                 binding.linePlaylist.visibility = View.VISIBLE
-                binding.tabPlaylist.setTextColor(resources.getColor(R.color.green))
-                binding.videoRV.visibility = View.GONE
-                binding.videoFolderRV.visibility = View.GONE
-                binding.selectedVideosRV.visibility = View.VISIBLE
-                binding.folderBackLayout.visibility = View.GONE
+                selected.setTextColor(resources.getColor(R.color.green))
+                showSection(video = false, folder = false, selected = true, showBack = false)
+                setVideoRvTop(R.id.customTabs)
             }
         }
     }
 
-    private fun setupRecyclerView() {
-        binding.videoRV.layoutManager =
-            GridLayoutManager(requireContext(), 1, LinearLayoutManager.VERTICAL, false)
-        binding.videoRV.setHasFixedSize(true)
-
-        binding.videoFolderRV.layoutManager =
-            GridLayoutManager(requireContext(), 2, LinearLayoutManager.VERTICAL, false)
-        binding.videoRV.setHasFixedSize(true)
-
-        binding.selectedVideosRV.layoutManager =
-            GridLayoutManager(requireContext(), 1, LinearLayoutManager.VERTICAL, false)
-        binding.videoRV.setHasFixedSize(true)
-
+    /** Show/hide layout groups together */
+    private fun showSection(video: Boolean, folder: Boolean, selected: Boolean, showBack: Boolean) {
+        binding.videoRV.visibility = if (video) View.VISIBLE else View.GONE
+        binding.videoFolderRV.visibility = if (folder) View.VISIBLE else View.GONE
+        binding.selectedVideosRV.visibility = if (selected) View.VISIBLE else View.GONE
+        binding.folderBackLayout.visibility = if (showBack) View.VISIBLE else View.GONE
     }
 
+    /** ---------- CONSTRAINT CLEAN VERSION ---------- **/
+    private fun setVideoRvTop(anchorId: Int) {
+        val layout = binding.root
+        val set = ConstraintSet()
+
+        set.clone(layout)
+        set.clear(R.id.videoRV, ConstraintSet.TOP)
+        set.connect(R.id.videoRV, ConstraintSet.TOP, anchorId, ConstraintSet.BOTTOM, 0)
+        set.applyTo(layout)
+    }
+
+    /** ---------- FOLDER ADAPTER ---------- **/
     private fun setupFolderAdapter() {
         val folderList = getVideoFolders(requireContext())
 
         videoFolderAdapter = VideoFolderAdapter(requireContext(), folderList) { folder ->
-            // handle folder click
-            // Example:
             openFolderVideos(folder)
-//            val videosInFolder = videoList.filter {
-//                it.path.startsWith(folder.folderPath)
-//            }
         }
 
         if (folderList.isNotEmpty()) {
@@ -236,30 +225,44 @@ class VideosFragment : Fragment() {
             binding.emptyView.visibility = View.VISIBLE
             binding.emptyView.text = "No folders found"
         }
-
     }
 
     private fun openFolderVideos(folder: VideoFolder) {
 
-        // Filter videos belonging to this folder
-        val videosInFolder = videoList.filter { video ->
-            video.path.startsWith(folder.folderPath)
+        val videosInFolder = videoList.filter {
+            it.path.startsWith(folder.folderPath)
         }.toMutableList()
 
-        // Update your global videoList used in videoAdapter
         videoAdapter.filterList(videosInFolder)
 
-        // Highlight the "Videos" tab & switch RRV
-//        highlightTab(binding.tabVideos)
-        binding.videoRV.visibility = View.VISIBLE
-        binding.videoFolderRV.visibility = View.GONE
-        binding.selectedVideosRV.visibility = View.GONE
-        binding.folderBackLayout.visibility = View.VISIBLE
         binding.folderName.text = folder.folderName
 
-        // Optional: scroll to top
+        showSection(video = true, folder = false, selected = false, showBack = true)
+
+        setVideoRvTop(R.id.folderBackLayout)
+
         binding.videoRV.scrollToPosition(0)
     }
+
+    /** ---------- BACK BUTTON ---------- **/
+    private fun setupFolderBack() {
+        binding.folderBackArrow.setOnClickListener {
+            showSection(video = false, folder = true, selected = false, showBack = false)
+            setVideoRvTop(R.id.customTabs)
+        }
+    }
+
+    /** ---------- BACK PRESS ---------- **/
+    private fun setupBackPress() {
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
+            if (videoAdapter.isSelectionMode) {
+                exitSelectionMode()
+            } else {
+                requireActivity().finish()
+            }
+        }
+    }
+
 
 
     private fun setupSearch() {
@@ -408,13 +411,14 @@ class VideosFragment : Fragment() {
             exitSelectionMode()
         } else {
             videoAdapter.selectedItems.clear()
-            videoAdapter.selectedItems.addAll(videoList.indices)
+            videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
             videoAdapter.notifyDataSetChanged()
         }
     }
 
     private fun deleteSelectedVideos() {
-        val selectedVideos = videoAdapter.selectedItems.map { videoList[it] }
+        val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+
         for (video in selectedVideos) {
             deleteFileFromStorage(video)
         }
@@ -424,9 +428,11 @@ class VideosFragment : Fragment() {
     private fun playSelectedVideos() {
         if (videoAdapter.selectedItems.isNotEmpty()) {
             val positions = videoAdapter.selectedItems
-            val firstVideo = videoList[positions.first()]
-            val uris = positions.map { videoList[it].contentUri }.toTypedArray()
-            val titles = positions.map { videoList[it].title }.toTypedArray()
+            val source = videoAdapter.currentList
+
+            val firstVideo = source[positions.first()]
+            val uris = positions.map { source[it].contentUri }.toTypedArray()
+            val titles = positions.map { source[it].title }.toTypedArray()
 
             val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                 firstVideo.contentUri, titles, true, uris, 0
@@ -437,7 +443,9 @@ class VideosFragment : Fragment() {
     }
 
     private fun shareSelectedVideos() {
-        val uris = videoAdapter.selectedItems.map { Uri.parse(videoList[it].contentUri) }
+        val uris = videoAdapter.selectedItems.map {
+            Uri.parse(videoAdapter.currentList[it].contentUri)
+        }
         val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "video/*"
             putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
@@ -450,7 +458,7 @@ class VideosFragment : Fragment() {
         val popupMenu = PopupMenu(requireContext(), anchorView)
         popupMenu.inflate(R.menu.options_menu)
         popupMenu.setOnMenuItemClickListener { item ->
-            val video = videoList[position]
+            val video = videoAdapter.currentList[position]
             when (item.itemId) {
                 R.id.addToPrivate -> {
                     addFilesToPrivate(video.id)
