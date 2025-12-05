@@ -284,9 +284,12 @@
             app:tint="@color/white" />
 
         <TextView
+            android:id="@+id/folderName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
+            android:textColor="@color/white"
+            android:textSize="14sp"
             android:text="Folder Name"/>
 
     </LinearLayout>

@@ -147,6 +147,14 @@ class VideosFragment : Fragment() {
             }
         }
 
+        binding.folderBackArrow.setOnClickListener {
+            binding.videoRV.visibility = View.GONE
+            binding.videoFolderRV.visibility = View.VISIBLE
+            binding.folderBackLayout.visibility = View.GONE
+            binding.selectedVideosRV.visibility = View.GONE
+
+        }
+
     }
 
     /** ------------------ SETUP FUNCTIONS ------------------ **/
@@ -171,6 +179,7 @@ class VideosFragment : Fragment() {
                 binding.videoRV.visibility = View.VISIBLE
                 binding.videoFolderRV.visibility = View.GONE
                 binding.selectedVideosRV.visibility = View.GONE
+                binding.folderBackLayout.visibility = View.GONE
             }
 
             binding.tabFolder -> {
@@ -178,6 +187,7 @@ class VideosFragment : Fragment() {
                 binding.tabFolder.setTextColor(resources.getColor(R.color.green))
                 binding.videoRV.visibility = View.GONE
                 binding.videoFolderRV.visibility = View.VISIBLE
+                binding.folderBackLayout.visibility = View.GONE
                 binding.selectedVideosRV.visibility = View.GONE
             }
 
@@ -187,6 +197,7 @@ class VideosFragment : Fragment() {
                 binding.videoRV.visibility = View.GONE
                 binding.videoFolderRV.visibility = View.GONE
                 binding.selectedVideosRV.visibility = View.VISIBLE
+                binding.folderBackLayout.visibility = View.GONE
             }
         }
     }
@@ -243,6 +254,8 @@ class VideosFragment : Fragment() {
         binding.videoRV.visibility = View.VISIBLE
         binding.videoFolderRV.visibility = View.GONE
         binding.selectedVideosRV.visibility = View.GONE
+        binding.folderBackLayout.visibility = View.VISIBLE
+        binding.folderName.text = folder.folderName
 
         // Optional: scroll to top
         binding.videoRV.scrollToPosition(0)
