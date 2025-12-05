@@ -265,12 +265,38 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <LinearLayout
+        android:id="@+id/folderBackLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/customTabs">
+
+        <ImageView
+            android:id="@+id/folderBackArrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:padding="10dp"
+            android:src="@drawable/outline_keyboard_backspace_24"
+            app:tint="@color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="Folder Name"/>
+
+    </LinearLayout>
+
     <!-- ==================== RECYCLER VIEW ==================== -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/videoRV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="00dp"
+        android:layout_marginTop="40dp"
         android:paddingBottom="0dp"
         app:layout_constraintTop_toBottomOf="@id/customTabs" />
 

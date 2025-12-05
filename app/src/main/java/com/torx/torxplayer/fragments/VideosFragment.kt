@@ -212,9 +212,10 @@ class VideosFragment : Fragment() {
         videoFolderAdapter = VideoFolderAdapter(requireContext(), folderList) { folder ->
             // handle folder click
             // Example:
-            val videosInFolder = videoList.filter {
-                it.path.startsWith(folder.folderPath)
-            }
+            openFolderVideos(folder)
+//            val videosInFolder = videoList.filter {
+//                it.path.startsWith(folder.folderPath)
+//            }
         }
 
         if (folderList.isNotEmpty()) {
@@ -226,6 +227,27 @@ class VideosFragment : Fragment() {
         }
 
     }
+
+    private fun openFolderVideos(folder: VideoFolder) {
+
+        // Filter videos belonging to this folder
+        val videosInFolder = videoList.filter { video ->
+            video.path.startsWith(folder.folderPath)
+        }.toMutableList()
+
+        // Update your global videoList used in videoAdapter
+        videoAdapter.filterList(videosInFolder)
+
+        // Highlight the "Videos" tab & switch RRV
+//        highlightTab(binding.tabVideos)
+        binding.videoRV.visibility = View.VISIBLE
+        binding.videoFolderRV.visibility = View.GONE
+        binding.selectedVideosRV.visibility = View.GONE
+
+        // Optional: scroll to top
+        binding.videoRV.scrollToPosition(0)
+    }
+
 
     private fun setupSearch() {
         binding.searchIcon.setOnClickListener {
