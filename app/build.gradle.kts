@@ -74,9 +74,9 @@ dependencies {
 
     // exoplayer for video playback
     implementation(libs.androidx.media3.exoplayer)
-    implementation(libs.androidx.media3.exoplayer.dash)
+//    implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.ui)
-    implementation(libs.androidx.media3.ui.compose)
+//    implementation(libs.androidx.media3.ui.compose)
 
     implementation(libs.lottie)
 
@@ -94,6 +94,5 @@ dependencies {
     // Import the Firebase BoM
     implementation(platform(libs.firebase.bom))
     // Add the dependency for the Firebase SDK for Google Analytics
-    implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
 }

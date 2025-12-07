@@ -29,5 +29,12 @@ class VideosModel (
     @ColumnInfo(name = "path")
     val path: String,
     @ColumnInfo(name = "is_private")
-    val isPrivate: Boolean = false
+    var isPrivate: Boolean = false,
+
+    @ColumnInfo(name = "is_playlist")
+    var isPlaylist: Boolean = false,
+
+    @ColumnInfo(name = "is_history")
+    var isHistory: Boolean = false,
+
 )

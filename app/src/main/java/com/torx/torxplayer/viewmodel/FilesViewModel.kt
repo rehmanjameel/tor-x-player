@@ -19,6 +19,10 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
     val allVideos: LiveData<MutableList<VideosModel>>
     val allPublicVideos: LiveData<MutableList<VideosModel>>
     val allPrivateVideos: LiveData<MutableList<VideosModel>>
+    val allPlaylistVideos: LiveData<MutableList<VideosModel>>
+    val allHistoryVideos: LiveData<MutableList<VideosModel>>
+
+
     val allAudios: LiveData<MutableList<AudiosModel>>
     val allPublicAudios: LiveData<MutableList<AudiosModel>>
     val allPrivateAudios: LiveData<MutableList<AudiosModel>>
@@ -31,6 +35,8 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
         allAudios = repository.allAudios
         allPublicVideos = repository.allPublicVideos
         allPrivateVideos = repository.allPrivateVideos
+        allPlaylistVideos = repository.allPlaylistVideos
+        allHistoryVideos = repository.allHistoryVideos
         
         allPublicAudios = repository.allPublicAudios
         allPrivateAudios = repository.allPrivateAudios
@@ -63,6 +69,18 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean) = viewModelScope.launch(Dispatchers.IO) {
         repository.updateVideoIsPrivate(videoId, isPrivate)
+    }
+
+    fun updateVideoIsPlaylist(videoId: Long, isPlaylist: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateVideoIsPlaylist(videoId, isPlaylist)
+    }
+
+    fun updateVideoIsHistory(videoId: Long, isHistory: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateVideoIsHistory(videoId, isHistory)
+    }
+
+    fun clearAllHistory() = viewModelScope.launch(Dispatchers.IO) {
+        repository.clearAllHistory()
     }
 
     fun clearAll() = viewModelScope.launch(Dispatchers.IO) {

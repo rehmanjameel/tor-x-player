@@ -42,8 +42,23 @@ interface FileDao {
     @Query("Update video SET is_private = :isPrivate WHERE id = :videoId")
     suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean)
 
+    @Query("Update video SET is_playlist = :isPlaylist WHERE id = :videoId")
+    suspend fun updateVideoIsPlaylist(videoId: Long, isPlaylist: Boolean)
+
+    @Query("Update video SET is_history = :isHistory WHERE id = :videoId")
+    suspend fun updateVideoIsHistory(videoId: Long, isHistory: Boolean)
+
+    @Query("UPDATE video SET is_history = 0 WHERE is_history = 1")
+    suspend fun clearAllHistory()
+
     @Query("SELECT * FROM video WHERE is_private = 1  Order by date_added DESC")
     fun getPrivateVideo(): LiveData<MutableList<VideosModel>>
+
+    @Query("SELECT * FROM video WHERE is_playlist = 1  Order by date_added DESC")
+    fun getPlaylistVideo(): LiveData<MutableList<VideosModel>>
+
+    @Query("SELECT * FROM video WHERE is_history = 1  Order by date_added DESC")
+    fun getHistoryVideo(): LiveData<MutableList<VideosModel>>
 
     @Query("SELECT * FROM video WHERE is_private = 0  Order by date_added DESC")
     fun getPublicVideo(): LiveData<MutableList<VideosModel>>

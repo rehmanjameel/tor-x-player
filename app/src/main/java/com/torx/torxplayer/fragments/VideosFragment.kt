@@ -12,12 +12,12 @@ import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.util.Log.v
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupMenu
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.addCallback
@@ -25,8 +25,6 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
@@ -34,11 +32,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.VideoFolderAdapter
+import com.torx.torxplayer.adapters.VideoHistoryAdapter
 import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentVideosBinding
 import com.torx.torxplayer.model.VideoFolder
@@ -49,17 +47,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@RequiresApi(Build.VERSION_CODES.R)
 class VideosFragment : Fragment() {
 
     private lateinit var binding: FragmentVideosBinding
     private lateinit var videoAdapter: VideosAdapter
+    private lateinit var playlistVideoAdapter: VideosAdapter
+    private lateinit var videoHistoryAdapter: VideoHistoryAdapter
     private lateinit var videoFolderAdapter: VideoFolderAdapter
     private var videoList = mutableListOf<VideosModel>()
+    private var videoHistoryList = mutableListOf<VideosModel>()
+    private var videoPlaylistList = mutableListOf<VideosModel>()
 
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private var lastDeletedUri: Uri? = null
     private lateinit var viewModel: FilesViewModel
+    private var isAscending = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -91,17 +93,57 @@ class VideosFragment : Fragment() {
         )[FilesViewModel::class.java]
 
         setupVideoAdapter()
+        setupHistoryAdapter()
         setupFolderAdapter()
         setupRecyclerView()
         setupTabClicks()
         setupBackPress()
-        setupFolderBack()
         observeVideos()
         checkMediaPermission()
         setupMainMenu()
         setupBottomActions()
+        observeHistoryVideos()
+
+        binding.folderBackArrow.setOnClickListener {
+            showSection(video = false, folder = true, selected = false, showBack = false)
+
+            setupFolderBack()
+
+        }
+
+        binding.swapIcon.setOnClickListener {
+            isAscending = !isAscending
+            applySorting()
+        }
+
+        binding.delHistoryIcon.setOnClickListener {
+            if (videoHistoryList.isNotEmpty()) {
+                viewModel.clearAllHistory()
+                videoHistoryList.clear()
+                videoHistoryAdapter.notifyDataSetChanged()
+                binding.historyRV.visibility = View.GONE
+                binding.historyEmptyView.visibility = View.VISIBLE
+                binding.delHistoryIcon.visibility = View.GONE
+            }
+        }
+
     }
 
+    private fun setupHistoryAdapter() {
+        videoHistoryAdapter = VideoHistoryAdapter(requireContext(), videoHistoryList,
+            onItemClick = { position ->
+                val video = videoHistoryList[position]
+                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                    video.contentUri,
+                    videoHistoryList.map { it.title }.toTypedArray(),
+                    true,
+                    videoHistoryList.map { it.contentUri }.toTypedArray(),
+                    position
+                )
+                findNavController().navigate(action)
+        })
+        binding.historyRV.adapter = videoHistoryAdapter
+    }
     private fun setupVideoAdapter() {
         videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
             override fun onOptionsMenuClicked(position: Int, anchorView: View) {
@@ -110,6 +152,7 @@ class VideosFragment : Fragment() {
 
             override fun onItemClick(position: Int) {
                 val videos = videoAdapter.currentList
+                if (position !in videos.indices) return  // prevents crash
                 val video = videos[position]
                 val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                     video.contentUri,
@@ -119,6 +162,7 @@ class VideosFragment : Fragment() {
                     position
                 )
                 findNavController().navigate(action)
+                viewModel.updateVideoIsHistory(video.id, true)
             }
 
             override fun onLongItemClick(position: Int) {
@@ -131,6 +175,49 @@ class VideosFragment : Fragment() {
         })
 
         binding.videoRV.adapter = videoAdapter
+    }
+
+    private fun applySorting() {
+        val sortedList = if (isAscending) {
+            videoList.sortedBy { it.dateAdded }
+        } else {
+            videoList.sortedByDescending { it.dateAdded }
+        }
+
+        videoAdapter.filterList(sortedList.toMutableList())
+    }
+
+    private fun setupPlaylistVideoAdapter() {
+        playlistVideoAdapter = VideosAdapter(requireContext(), videoPlaylistList, object : OptionsMenuClickListener {
+            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                performOptionsMenuClick(position, anchorView)
+            }
+
+            override fun onItemClick(position: Int) {
+                val videos = playlistVideoAdapter.currentList
+                if (position !in videos.indices) return  // prevents crash
+                val video = videos[position]
+                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                    video.contentUri,
+                    videos.map { it.title }.toTypedArray(),
+                    true,
+                    videos.map { it.contentUri }.toTypedArray(),
+                    position
+                )
+                findNavController().navigate(action)
+                viewModel.updateVideoIsHistory(video.id, true)
+            }
+
+            override fun onLongItemClick(position: Int) {
+                enterSelectionMode(position)
+            }
+
+            override fun onSelectionChanged(count: Int) {
+                binding.selectAllCheckbox.isChecked = count == playlistVideoAdapter.itemCount
+            }
+        })
+
+        binding.selectedVideosRV.adapter = playlistVideoAdapter
     }
 
     private fun setupRecyclerView() {
@@ -152,9 +239,12 @@ class VideosFragment : Fragment() {
 
     /** ------------------ TAB HANDLER ------------------ **/
     private fun setupTabClicks() {
-        binding.tabVideos.setOnClickListener { highlightTab(binding.tabVideos) }
+        binding.tabVideos.setOnClickListener { highlightTab(binding.tabVideos)
+           setupFolderBack()
+        }
         binding.tabFolder.setOnClickListener { highlightTab(binding.tabFolder) }
-        binding.tabPlaylist.setOnClickListener { highlightTab(binding.tabPlaylist) }
+        binding.tabPlaylist.setOnClickListener { highlightTab(binding.tabPlaylist)
+        setupFolderBack()}
     }
 
     private fun highlightTab(selected: TextView) {
@@ -187,6 +277,8 @@ class VideosFragment : Fragment() {
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = false, selected = true, showBack = false)
                 setVideoRvTop(R.id.customTabs)
+                setupPlaylistVideoAdapter()
+                observePlaylistVideos()
             }
         }
     }
@@ -201,13 +293,17 @@ class VideosFragment : Fragment() {
 
     /** ---------- CONSTRAINT CLEAN VERSION ---------- **/
     private fun setVideoRvTop(anchorId: Int) {
-        val layout = binding.root
-        val set = ConstraintSet()
+        val videoRV = binding.videoRV
+        val params = videoRV.layoutParams as RelativeLayout.LayoutParams
 
-        set.clone(layout)
-        set.clear(R.id.videoRV, ConstraintSet.TOP)
-        set.connect(R.id.videoRV, ConstraintSet.TOP, anchorId, ConstraintSet.BOTTOM, 0)
-        set.applyTo(layout)
+        // Remove any TOP/BOTTOM rules first
+        params.removeRule(RelativeLayout.ALIGN_PARENT_TOP)
+        params.removeRule(RelativeLayout.BELOW)
+
+        // Apply new rule: videoRV is below the given anchor view
+        params.addRule(RelativeLayout.BELOW, anchorId)
+
+        videoRV.layoutParams = params
     }
 
     /** ---------- FOLDER ADAPTER ---------- **/
@@ -215,6 +311,7 @@ class VideosFragment : Fragment() {
         val folderList = getVideoFolders(requireContext())
 
         videoFolderAdapter = VideoFolderAdapter(requireContext(), folderList) { folder ->
+            selectedFolder = folder
             openFolderVideos(folder)
         }
 
@@ -230,7 +327,7 @@ class VideosFragment : Fragment() {
     private fun openFolderVideos(folder: VideoFolder) {
 
         val videosInFolder = videoList.filter {
-            it.path.startsWith(folder.folderPath)
+            it.path.startsWith(folder.folderPath) && !it.isPrivate
         }.toMutableList()
 
         videoAdapter.filterList(videosInFolder)
@@ -246,10 +343,11 @@ class VideosFragment : Fragment() {
 
     /** ---------- BACK BUTTON ---------- **/
     private fun setupFolderBack() {
-        binding.folderBackArrow.setOnClickListener {
-            showSection(video = false, folder = true, selected = false, showBack = false)
-            setVideoRvTop(R.id.customTabs)
-        }
+        selectedFolder = null
+
+        // Restore full list
+        videoAdapter.filterList(videoList.toMutableList())
+        setVideoRvTop(R.id.customTabs) // move RV back under original layout
     }
 
     /** ---------- BACK PRESS ---------- **/
@@ -257,13 +355,12 @@ class VideosFragment : Fragment() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (videoAdapter.isSelectionMode) {
                 exitSelectionMode()
+                refreshVisibleList()
             } else {
                 requireActivity().finish()
             }
         }
     }
-
-
 
     private fun setupSearch() {
         binding.searchIcon.setOnClickListener {
@@ -323,21 +420,24 @@ class VideosFragment : Fragment() {
         deleteRequestLauncher =
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
                 if (result.resultCode == Activity.RESULT_OK) {
+
                     lastDeletedUri?.let { uri ->
                         viewModel.deleteVideosByUri(uri.toString())
                         videoList.removeAll { it.contentUri == uri.toString() }
-                        videoAdapter.notifyDataSetChanged()
                     }
-                    Toast.makeText(
-                        requireContext(),
-                        "File deleted successfully",
-                        Toast.LENGTH_SHORT
+
+                    refreshVisibleList()   // <--- IMPORTANT FIX
+
+                    Toast.makeText(requireContext(),
+                        "File deleted successfully", Toast.LENGTH_SHORT
                     ).show()
+
                 } else {
                     Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
                 }
             }
     }
+
 
     private fun setupMainMenu() {
 //        binding.mainMenu.setOnClickListener { view ->
@@ -362,12 +462,23 @@ class VideosFragment : Fragment() {
         binding.actionPlay.setOnClickListener { playSelectedVideos() }
         binding.actionShare.setOnClickListener { shareSelectedVideos() }
         binding.actionPrivate.setOnClickListener {
-            val selectedVideos = videoAdapter.selectedItems.map { videoList[it] }
+            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+
             for (video in selectedVideos) {
                 addFilesToPrivate(video.id)
+
+                // Update local cache
+                videoList.find { it.id == video.id }?.isPrivate = true
             }
+
             exitSelectionMode()
+
+            // Refresh folder view if inside folder
+            if (selectedFolder != null) {
+                openFolderVideos(selectedFolder!!)
+            }
         }
+
     }
 
     /** ------------------ VIDEO LOGIC ------------------ **/
@@ -376,10 +487,35 @@ class VideosFragment : Fragment() {
         viewModel.allPublicVideos.observe(viewLifecycleOwner) { videos ->
             videoList.clear()
             videoList.addAll(videos)
-            videoAdapter.notifyDataSetChanged()
+            applySorting()   // <--- IMPORTANT
 
             binding.videoRV.visibility = if (videos.isNotEmpty()) View.VISIBLE else View.GONE
             binding.emptyView.visibility = if (videos.isEmpty()) View.VISIBLE else View.GONE
+            binding.progressBar.visibility = View.GONE
+        }
+    }
+
+    private fun observeHistoryVideos() {
+        viewModel.allHistoryVideos.observe(viewLifecycleOwner) { historyVideos ->
+            videoHistoryList.clear()
+            videoHistoryList.addAll(historyVideos)
+            videoHistoryAdapter.notifyDataSetChanged()
+            binding.historyRV.visibility = if (historyVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.historyEmptyView.visibility = if (historyVideos.isEmpty()) View.VISIBLE else View.GONE
+            binding.delHistoryIcon.visibility = if (historyVideos.isNotEmpty()) View.VISIBLE else View.GONE
+
+            binding.progressBar.visibility = View.GONE
+        }
+    }
+
+    private fun observePlaylistVideos() {
+        viewModel.allPlaylistVideos.observe(viewLifecycleOwner) { playlistVideos ->
+            videoPlaylistList.clear()
+            videoPlaylistList.addAll(playlistVideos)
+            playlistVideoAdapter.notifyDataSetChanged()
+            binding.selectedVideosRV.visibility = if (playlistVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.emptyView.visibility = if (playlistVideos.isEmpty()) View.VISIBLE else View.GONE
+
             binding.progressBar.visibility = View.GONE
         }
     }
@@ -405,6 +541,15 @@ class VideosFragment : Fragment() {
             View.VISIBLE
 
     }
+    private var selectedFolder: VideoFolder? = null
+
+    private fun refreshVisibleList() {
+        if (selectedFolder != null) {
+            openFolderVideos(selectedFolder!!)
+        } else {
+            videoAdapter.filterList(videoList.toMutableList())
+        }
+    }
 
     private fun toggleSelectAll() {
         if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
@@ -423,11 +568,13 @@ class VideosFragment : Fragment() {
             deleteFileFromStorage(video)
         }
         exitSelectionMode()
+        refreshVisibleList()
+
     }
 
     private fun playSelectedVideos() {
         if (videoAdapter.selectedItems.isNotEmpty()) {
-            val positions = videoAdapter.selectedItems
+            val positions = videoAdapter.selectedItems.toList()  // ensure fixed order
             val source = videoAdapter.currentList
 
             val firstVideo = source[positions.first()]
@@ -438,13 +585,23 @@ class VideosFragment : Fragment() {
                 firstVideo.contentUri, titles, true, uris, 0
             )
             findNavController().navigate(action)
+
+            // FIXED – no more crash
+            for (pos in positions) {
+                val videoId = source[pos].id
+                Log.e("video ids pos", pos.toString())
+                Log.e("video ids", videoId.toString())
+                viewModel.updateVideoIsPlaylist(videoId, true)
+            }
+
             exitSelectionMode()
         }
     }
 
+
     private fun shareSelectedVideos() {
         val uris = videoAdapter.selectedItems.map {
-            Uri.parse(videoAdapter.currentList[it].contentUri)
+            videoAdapter.currentList[it].contentUri.toUri()
         }
         val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "video/*"
@@ -462,8 +619,13 @@ class VideosFragment : Fragment() {
             when (item.itemId) {
                 R.id.addToPrivate -> {
                     addFilesToPrivate(video.id)
-                    videoList.removeAt(position)
-                    videoAdapter.notifyItemRemoved(position)
+                    val originalIndex = videoList.indexOfFirst { it.id == video.id }
+                    if (originalIndex != -1) videoList.removeAt(originalIndex)
+
+                    val updatedList = videoAdapter.currentList.toMutableList()
+                    updatedList.removeAt(position)
+                    videoAdapter.filterList(updatedList)
+
                     true
                 }
 

@@ -25,8 +25,8 @@ class VideosAdapter(
 
     var isSelectionMode = false
     val selectedItems = mutableSetOf<Int>()
-    var currentList = mutableListOf<VideosModel>()
-        private set
+    val currentList: List<VideosModel>
+        get() = videos
 
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VideoViewHolder {
@@ -88,8 +88,10 @@ class VideosAdapter(
 
     fun filterList(filterList: MutableList<VideosModel>) {
         videos = filterList
+        selectedItems.clear()
         notifyDataSetChanged()
     }
+
 
     fun selectAll() {
         selectedItems.clear()
