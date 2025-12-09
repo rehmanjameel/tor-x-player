@@ -62,6 +62,7 @@ class VideosFragment : Fragment() {
     private var lastDeletedUri: Uri? = null
     private lateinit var viewModel: FilesViewModel
     private var isAscending = false
+    private var isPlaylistView = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -263,6 +264,8 @@ class VideosFragment : Fragment() {
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = true, folder = false, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
+                isPlaylistView = false
+                observeVideos()
             }
 
             binding.tabFolder -> {
@@ -270,6 +273,8 @@ class VideosFragment : Fragment() {
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = true, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
+                isPlaylistView = false
+                binding.emptyView.visibility = View.GONE
             }
 
             binding.tabPlaylist -> {
@@ -279,6 +284,8 @@ class VideosFragment : Fragment() {
                 setVideoRvTop(R.id.customTabs)
                 setupPlaylistVideoAdapter()
                 observePlaylistVideos()
+                isPlaylistView = true
+                setupBottomActions()
             }
         }
     }
@@ -457,26 +464,54 @@ class VideosFragment : Fragment() {
     }
 
     private fun setupBottomActions() {
-        binding.actionDelete.setOnClickListener { deleteSelectedVideos() }
         binding.selectAllCheckbox.setOnClickListener { toggleSelectAll() }
+        binding.actionDelete.setOnClickListener { deleteSelectedVideos() }
         binding.actionPlay.setOnClickListener { playSelectedVideos() }
         binding.actionShare.setOnClickListener { shareSelectedVideos() }
+
+        if (isPlaylistView) {
+            binding.actionDelete.visibility = View.GONE
+            binding.actionPrivate.visibility = View.GONE
+            binding.actionShare.visibility = View.GONE
+            binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_remove_24)
+            binding.playListTxt.text = "Remove List"
+        }
+
         binding.actionPrivate.setOnClickListener {
-            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+            Log.e("is private", "selectedVideos.toString()")
+            if (isPlaylistView) {
+                val selectedVideos = playlistVideoAdapter.selectedItems.map { playlistVideoAdapter.currentList[it] }
 
-            for (video in selectedVideos) {
-                addFilesToPrivate(video.id)
+                Log.e("is private", selectedVideos.toString())
+                for (video in selectedVideos) {
+                    addFilesToPrivate(video.id, false, playlistVideoAdapter)
 
-                // Update local cache
-                videoList.find { it.id == video.id }?.isPrivate = true
+                    // Update local cache
+                    videoPlaylistList.find { it.id == video.id }?.isPrivate = false
+                }
+
+                exitSelectionMode()
+
+            } else {
+
+                Log.e("not playlist", isPlaylistView.toString())
+                val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+
+                for (video in selectedVideos) {
+                    addFilesToPrivate(video.id, true, videoAdapter)
+
+                    // Update local cache
+                    videoList.find { it.id == video.id }?.isPrivate = true
+                }
+
+                exitSelectionMode()
+
+                // Refresh folder view if inside folder
+                if (selectedFolder != null) {
+                    openFolderVideos(selectedFolder!!)
+                }
             }
 
-            exitSelectionMode()
-
-            // Refresh folder view if inside folder
-            if (selectedFolder != null) {
-                openFolderVideos(selectedFolder!!)
-            }
         }
 
     }
@@ -521,9 +556,17 @@ class VideosFragment : Fragment() {
     }
 
     private fun enterSelectionMode(position: Int) {
-        videoAdapter.isSelectionMode = true
-        videoAdapter.selectedItems.add(position)
-        videoAdapter.notifyDataSetChanged()
+        if (isPlaylistView) {
+            playlistVideoAdapter.isSelectionMode = true
+            playlistVideoAdapter.selectedItems.add(position)
+
+            playlistVideoAdapter.notifyDataSetChanged()
+
+        } else {
+            videoAdapter.isSelectionMode = true
+            videoAdapter.selectedItems.add(position)
+            videoAdapter.notifyDataSetChanged()
+        }
         binding.bottomActionBar.visibility = View.VISIBLE
         binding.selectAllCheckbox.visibility = View.VISIBLE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -532,9 +575,15 @@ class VideosFragment : Fragment() {
     }
 
     private fun exitSelectionMode() {
-        videoAdapter.isSelectionMode = false
-        videoAdapter.selectedItems.clear()
-        videoAdapter.notifyDataSetChanged()
+        if (isPlaylistView) {
+            playlistVideoAdapter.isSelectionMode = false
+            playlistVideoAdapter.selectedItems.clear()
+            playlistVideoAdapter.notifyDataSetChanged()
+        } else {
+            videoAdapter.isSelectionMode = false
+            videoAdapter.selectedItems.clear()
+            videoAdapter.notifyDataSetChanged()
+        }
         binding.selectAllCheckbox.visibility = View.GONE
         binding.bottomActionBar.visibility = View.GONE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -552,63 +601,96 @@ class VideosFragment : Fragment() {
     }
 
     private fun toggleSelectAll() {
-        if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
-            exitSelectionMode()
+        if (isPlaylistView) {
+            if (playlistVideoAdapter.selectedItems.size == playlistVideoAdapter.itemCount) {
+                exitSelectionMode()
+
+            } else {
+
+                playlistVideoAdapter.selectedItems.clear()
+                playlistVideoAdapter.selectedItems.addAll(playlistVideoAdapter.currentList.indices)
+                playlistVideoAdapter.notifyDataSetChanged()
+            }
         } else {
-            videoAdapter.selectedItems.clear()
-            videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
-            videoAdapter.notifyDataSetChanged()
+
+            if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
+                exitSelectionMode()
+            } else {
+                videoAdapter.selectedItems.clear()
+                videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
+                videoAdapter.notifyDataSetChanged()
+            }
         }
     }
 
     private fun deleteSelectedVideos() {
-        val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+        if (!isPlaylistView) {
+            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
 
-        for (video in selectedVideos) {
-            deleteFileFromStorage(video)
+            for (video in selectedVideos) {
+                deleteFileFromStorage(video)
+            }
+            exitSelectionMode()
+            refreshVisibleList()
         }
-        exitSelectionMode()
-        refreshVisibleList()
 
     }
 
     private fun playSelectedVideos() {
-        if (videoAdapter.selectedItems.isNotEmpty()) {
-            val positions = videoAdapter.selectedItems.toList()  // ensure fixed order
-            val source = videoAdapter.currentList
+        if (!isPlaylistView) {
+            if (videoAdapter.selectedItems.isNotEmpty()) {
+                val positions = videoAdapter.selectedItems.toList()  // ensure fixed order
+                val source = videoAdapter.currentList
 
-            val firstVideo = source[positions.first()]
-            val uris = positions.map { source[it].contentUri }.toTypedArray()
-            val titles = positions.map { source[it].title }.toTypedArray()
+                val firstVideo = source[positions.first()]
+                val uris = positions.map { source[it].contentUri }.toTypedArray()
+                val titles = positions.map { source[it].title }.toTypedArray()
 
-            val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                firstVideo.contentUri, titles, true, uris, 0
-            )
-            findNavController().navigate(action)
+                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                    firstVideo.contentUri, titles, true, uris, 0
+                )
+                findNavController().navigate(action)
 
-            // FIXED – no more crash
-            for (pos in positions) {
-                val videoId = source[pos].id
-                Log.e("video ids pos", pos.toString())
-                Log.e("video ids", videoId.toString())
-                viewModel.updateVideoIsPlaylist(videoId, true)
+                // FIXED – no more crash
+                for (pos in positions) {
+                    val videoId = source[pos].id
+                    Log.e("video ids pos", pos.toString())
+                    Log.e("video ids", videoId.toString())
+                    viewModel.updateVideoIsPlaylist(videoId, true)
+                }
+
             }
+        } else {
+            if (playlistVideoAdapter.selectedItems.isNotEmpty()) {
+                val positions = playlistVideoAdapter.selectedItems.toList()  // ensure fixed order
+                val source = playlistVideoAdapter.currentList
 
+                for (pos in positions) {
+                    val videoId = source[pos].id
+                    Log.e("video ids pos", pos.toString())
+                    Log.e("video ids", videoId.toString())
+                    viewModel.updateVideoIsPlaylist(videoId, false)
+                }
+
+            }
             exitSelectionMode()
+
         }
     }
 
 
     private fun shareSelectedVideos() {
-        val uris = videoAdapter.selectedItems.map {
-            videoAdapter.currentList[it].contentUri.toUri()
+        if (!isPlaylistView) {
+            val uris = videoAdapter.selectedItems.map {
+                videoAdapter.currentList[it].contentUri.toUri()
+            }
+            val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "video/*"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+            }
+            startActivity(Intent.createChooser(shareIntent, "Share videos"))
+            exitSelectionMode()
         }
-        val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-            type = "video/*"
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-        }
-        startActivity(Intent.createChooser(shareIntent, "Share videos"))
-        exitSelectionMode()
     }
 
     private fun performOptionsMenuClick(position: Int, anchorView: View) {
@@ -618,7 +700,7 @@ class VideosFragment : Fragment() {
             val video = videoAdapter.currentList[position]
             when (item.itemId) {
                 R.id.addToPrivate -> {
-                    addFilesToPrivate(video.id)
+//                    addFilesToPrivate(video.id)
                     val originalIndex = videoList.indexOfFirst { it.id == video.id }
                     if (originalIndex != -1) videoList.removeAt(originalIndex)
 
@@ -640,9 +722,11 @@ class VideosFragment : Fragment() {
         popupMenu.show()
     }
 
-    private fun addFilesToPrivate(videoId: Long) {
-        viewModel.updateVideoIsPrivate(videoId, true)
-        videoAdapter.notifyDataSetChanged()
+    private fun addFilesToPrivate(videoId: Long, isPrivate: Boolean, videosAdapter: VideosAdapter) {
+        viewModel.updateVideoIsPrivate(videoId, isPrivate)
+        Log.e("is private1", isPrivate.toString())
+
+        videosAdapter.notifyDataSetChanged()
         Toast.makeText(requireContext(), "Added to private", Toast.LENGTH_SHORT).show()
     }
 

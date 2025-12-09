@@ -22,6 +22,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.arconn.devicedesk.utils.AppGlobals
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
@@ -250,6 +251,25 @@ class PrivateFilesFragment : Fragment() {
                 binding.progressBar.visibility = View.GONE
             }
         }
+    }
+
+    private fun enterSelectionMode(position: Int) {
+        if (isPlaylistView) {
+            playlistVideoAdapter.isSelectionMode = true
+            playlistVideoAdapter.selectedItems.add(position)
+
+            playlistVideoAdapter.notifyDataSetChanged()
+
+        } else {
+            videoAdapter.isSelectionMode = true
+            videoAdapter.selectedItems.add(position)
+            videoAdapter.notifyDataSetChanged()
+        }
+        binding.bottomActionBar.visibility = View.VISIBLE
+        binding.selectAllCheckbox.visibility = View.VISIBLE
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+            View.GONE
+
     }
 
     private fun performOptionsMenuClick(position: Int, anchorView: View) {

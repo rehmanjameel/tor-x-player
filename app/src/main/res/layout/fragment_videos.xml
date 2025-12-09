@@ -407,12 +407,14 @@
             android:theme="@style/ClickableView">
 
             <ImageView
+                android:id="@+id/addPlaylistIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/baseline_playlist_play_24"
                 app:tint="@color/white" />
 
             <TextView
+                android:id="@+id/playListTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Add to" />
