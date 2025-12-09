@@ -274,4 +274,129 @@
         app:layout_constraintBottom_toBottomOf="parent"
         />
 
+    <!-- ==================== SELECT ALL ==================== -->
+    <CheckBox
+        android:id="@+id/selectAllCheckbox"
+        style="@style/CustomCheckboxBrand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="60dp"
+        android:padding="10dp"
+        android:text="Select All"
+        android:textColor="@color/white"
+        android:visibility="gone"
+        android:layout_alignParentEnd="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- ==================== BOTTOM ACTION BAR ==================== -->
+    <LinearLayout
+        android:id="@+id/bottomActionBar"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="@color/bottom_bar_bg"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:visibility="gone"
+        android:weightSum="4"
+        android:layout_alignParentBottom="true"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:id="@+id/actionShare"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:theme="@style/ClickableView">
+
+            <ImageView
+
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/baseline_share_24"
+                app:tint="@color/white" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Share" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/actionPlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:theme="@style/ClickableView">
+
+            <ImageView
+                android:id="@+id/addPlaylistIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/baseline_playlist_play_24"
+                app:tint="@color/white" />
+
+            <TextView
+                android:id="@+id/playListTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Add to" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/actionPrivate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:theme="@style/ClickableView">
+
+            <ImageView
+                android:id="@+id/privateIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/outline_visibility_lock_24"
+                app:tint="@color/white" />
+
+            <TextView
+                android:id="@+id/privateTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lock in" />
+
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/actionDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:theme="@style/ClickableView">
+
+            <ImageView
+
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/baseline_delete_sweep_24" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Delete" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

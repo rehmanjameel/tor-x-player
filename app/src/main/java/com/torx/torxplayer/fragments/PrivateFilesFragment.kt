@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.appcompat.widget.PopupMenu
@@ -50,7 +51,7 @@ class PrivateFilesFragment : Fragment() {
 
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private var lastDeletedUri: Uri? = null
-    private lateinit var viewModel : FilesViewModel
+    private lateinit var viewModel: FilesViewModel
 
     // private audios
     private lateinit var audioAdapter: AudioAdapter
@@ -97,7 +98,10 @@ class PrivateFilesFragment : Fragment() {
             openPrivateAudios()
         }
 
+        setupBottomActions()
+
         binding.backArrow.setOnClickListener {
+            setupBackPress()
             binding.cardsLayout.visibility = View.VISIBLE
             binding.privateFilesRV.visibility = View.GONE
             binding.title.text = getString(R.string.app_name)
@@ -147,14 +151,24 @@ class PrivateFilesFragment : Fragment() {
                     // Step 2: Confirm PIN
                     if (enteredPin == tempPin) {
                         appGlobals.saveString("user_pin", enteredPin)
-                        Toast.makeText(requireContext(), "PIN set successfully!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "PIN set successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         binding.privateLayout.visibility = View.VISIBLE
                         binding.pinTitle.visibility = View.GONE
                         binding.pinDotsLayout.visibility = View.GONE
                         binding.buttonsLayout.visibility = View.GONE
-                        binding.privateFragment.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.black))
+                        binding.privateFragment.setBackgroundColor(
+                            ContextCompat.getColor(
+                                requireContext(),
+                                R.color.black
+                            )
+                        )
                     } else {
-                        Toast.makeText(requireContext(), "PINs do not match!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "PINs do not match!", Toast.LENGTH_SHORT)
+                            .show()
                         enteredPin = ""
                         tempPin = ""
                         isConfirmingPin = false
@@ -171,7 +185,12 @@ class PrivateFilesFragment : Fragment() {
                     binding.pinTitle.visibility = View.GONE
                     binding.pinDotsLayout.visibility = View.GONE
                     binding.buttonsLayout.visibility = View.GONE
-                    binding.privateFragment.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.black))
+                    binding.privateFragment.setBackgroundColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.black
+                        )
+                    )
 
                 } else {
                     Toast.makeText(requireContext(), "Wrong PIN!", Toast.LENGTH_SHORT).show()
@@ -213,31 +232,34 @@ class PrivateFilesFragment : Fragment() {
                 binding.emptyView.visibility = View.GONE
                 binding.progressBar.visibility = View.GONE
 
-                videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
-                    override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                        performOptionsMenuClick(position, anchorView)
-                    }
+                videoAdapter =
+                    VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+                        override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                            performOptionsMenuClick(position, anchorView)
+                        }
 
-                    override fun onItemClick(position: Int) {
-                        val video = videoList[position]
-                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
-                            video.contentUri,
-                            videoList.map { it.title }.toTypedArray(),
-                            false,
-                            videoList.map { it.contentUri }.toTypedArray(),
-                            position
-                        )
-                        findNavController().navigate(action)
-                    }
+                        override fun onItemClick(position: Int) {
+                            val video = videoList[position]
+                            val action =
+                                PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
+                                    video.contentUri,
+                                    videoList.map { it.title }.toTypedArray(),
+                                    false,
+                                    videoList.map { it.contentUri }.toTypedArray(),
+                                    position
+                                )
+                            findNavController().navigate(action)
+                        }
 
-                    override fun onLongItemClick(position: Int) {
+                        override fun onLongItemClick(position: Int) {
 
-                    }
+                            enterSelectionMode(position)
+                        }
 
-                    override fun onSelectionChanged(count: Int) {
-
-                    }
-                })
+                        override fun onSelectionChanged(count: Int) {
+                            binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
+                        }
+                    })
                 binding.privateFilesRV.apply {
                     layoutManager = GridLayoutManager(requireContext(), 1)
                     adapter = videoAdapter
@@ -254,22 +276,89 @@ class PrivateFilesFragment : Fragment() {
     }
 
     private fun enterSelectionMode(position: Int) {
-        if (isPlaylistView) {
-            playlistVideoAdapter.isSelectionMode = true
-            playlistVideoAdapter.selectedItems.add(position)
 
-            playlistVideoAdapter.notifyDataSetChanged()
-
-        } else {
-            videoAdapter.isSelectionMode = true
-            videoAdapter.selectedItems.add(position)
-            videoAdapter.notifyDataSetChanged()
-        }
+        videoAdapter.isSelectionMode = true
+        videoAdapter.selectedItems.add(position)
+        videoAdapter.notifyDataSetChanged()
         binding.bottomActionBar.visibility = View.VISIBLE
         binding.selectAllCheckbox.visibility = View.VISIBLE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
             View.GONE
 
+    }
+
+    private fun exitSelectionMode() {
+        videoAdapter.isSelectionMode = false
+        videoAdapter.selectedItems.clear()
+        videoAdapter.notifyDataSetChanged()
+
+        binding.selectAllCheckbox.visibility = View.GONE
+        binding.bottomActionBar.visibility = View.GONE
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+            View.VISIBLE
+
+    }
+
+    private fun toggleSelectAll() {
+
+
+        if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
+            exitSelectionMode()
+        } else {
+            videoAdapter.selectedItems.clear()
+            videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
+            videoAdapter.notifyDataSetChanged()
+        }
+
+    }
+
+    private fun setupBottomActions() {
+        binding.selectAllCheckbox.setOnClickListener { toggleSelectAll() }
+//        binding.actionDelete.setOnClickListener { deleteSelectedVideos() }
+//        binding.actionPlay.setOnClickListener { playSelectedVideos() }
+//        binding.actionShare.setOnClickListener { shareSelectedVideos() }
+
+        binding.actionDelete.visibility = View.GONE
+        binding.actionPrivate.visibility = View.VISIBLE
+        binding.actionPlay.visibility = View.GONE
+        binding.actionShare.visibility = View.GONE
+        binding.privateIcon.setImageResource(R.drawable.outline_visibility_24)
+        binding.privateTxt.text = "Unlock"
+
+        binding.actionPrivate.setOnClickListener {
+            Log.e("is private", "selectedVideos.toString()")
+
+            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+
+            for (video in selectedVideos) {
+                addFilesToPrivate(video.id, false, videoAdapter)
+
+                // Update local cache
+                videoList.find { it.id == video.id }?.isPrivate = false
+            }
+
+            exitSelectionMode()
+
+
+        }
+
+    }
+
+    private fun addFilesToPrivate(videoId: Long, isPrivate: Boolean, videosAdapter: VideosAdapter) {
+        viewModel.updateVideoIsPrivate(videoId, isPrivate)
+        Log.e("is private1", isPrivate.toString())
+
+        videosAdapter.notifyDataSetChanged()
+        Toast.makeText(requireContext(), "Added to private", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setupBackPress() {
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
+            if (videoAdapter.isSelectionMode) {
+                exitSelectionMode()
+                return@addCallback
+            }
+        }
     }
 
     private fun performOptionsMenuClick(position: Int, anchorView: View) {
@@ -315,7 +404,8 @@ class PrivateFilesFragment : Fragment() {
     private fun deleteFileFromStorage(video: VideosModel) {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
+                val rowsDeleted =
+                    requireContext().contentResolver.delete(video.contentUri.toUri(), null, null)
                 if (rowsDeleted > 0) {
                     viewModel.deleteVideosByUri(video.contentUri) // also remove from DB
                     videoList.remove(video)
@@ -364,27 +454,33 @@ class PrivateFilesFragment : Fragment() {
                 binding.emptyView.visibility = View.GONE
 
                 Log.e("audio list", "$audioList")
-                audioAdapter = AudioAdapter(requireContext(), audioList, object : OptionsMenuClickListener {
-                    override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                        performAudioOptionsMenuClick(position, anchorView)
-                    }
+                audioAdapter =
+                    AudioAdapter(requireContext(), audioList, object : OptionsMenuClickListener {
+                        override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                            performAudioOptionsMenuClick(position, anchorView)
+                        }
 
-                    override fun onItemClick(position: Int) {
-                        val audio = audioList[position]
-                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
-                            audio.uri, audioList.map { it.title }.toTypedArray(), false, audioList.map { it.uri }.toTypedArray(),
-                            position)
-                        findNavController().navigate(action)
-                    }
+                        override fun onItemClick(position: Int) {
+                            val audio = audioList[position]
+                            val action =
+                                PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
+                                    audio.uri,
+                                    audioList.map { it.title }.toTypedArray(),
+                                    false,
+                                    audioList.map { it.uri }.toTypedArray(),
+                                    position
+                                )
+                            findNavController().navigate(action)
+                        }
 
-                    override fun onLongItemClick(position: Int) {
+                        override fun onLongItemClick(position: Int) {
 
-                    }
+                        }
 
-                    override fun onSelectionChanged(count: Int) {
+                        override fun onSelectionChanged(count: Int) {
 
-                    }
-                })
+                        }
+                    })
                 binding.privateFilesRV.apply {
                     layoutManager = GridLayoutManager(requireContext(), 1)
                     adapter = audioAdapter
@@ -407,11 +503,12 @@ class PrivateFilesFragment : Fragment() {
         // add the menu
         popupMenu.inflate(R.menu.options_menu)
         // implement on menu item click Listener
-        popupMenu.setOnMenuItemClickListener(object : androidx.appcompat.widget.PopupMenu.OnMenuItemClickListener{
+        popupMenu.setOnMenuItemClickListener(object :
+            androidx.appcompat.widget.PopupMenu.OnMenuItemClickListener {
             override fun onMenuItemClick(item: MenuItem?): Boolean {
                 val audio = audioList[position]
 
-                when(item?.itemId){
+                when (item?.itemId) {
 
 //                    R.id.play -> {
 //                        val action = PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
@@ -427,9 +524,14 @@ class PrivateFilesFragment : Fragment() {
                         viewModel.updateVideoIsPrivate(audio.id, true)
                         audioList.removeAt(position)
                         audioAdapter.notifyItemRemoved(position)
-                        Toast.makeText(requireContext() , "Add to private clicked" , Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Add to private clicked",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         return true
                     }
+
                     R.id.delete -> {
                         // define
 
@@ -448,7 +550,8 @@ class PrivateFilesFragment : Fragment() {
         try {
             // For Android Q (API 29) and below — direct delete
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                val rowsDeleted = requireContext().contentResolver.delete(audio.uri.toUri(), null, null)
+                val rowsDeleted =
+                    requireContext().contentResolver.delete(audio.uri.toUri(), null, null)
                 if (rowsDeleted > 0) {
 
                     viewModel.deleteAudiosByUri(audio.uri) // also remove from DB
@@ -461,7 +564,8 @@ class PrivateFilesFragment : Fragment() {
             } else {
                 // Android 11+ (Scoped Storage) — user confirmation required
                 val collection = arrayListOf(audio.uri.toUri())
-                val pendingIntent = MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
+                val pendingIntent =
+                    MediaStore.createDeleteRequest(requireContext().contentResolver, collection)
                 val request = IntentSenderRequest.Builder(pendingIntent.intentSender).build()
                 lastDeletedUri = audio.uri.toUri()
 

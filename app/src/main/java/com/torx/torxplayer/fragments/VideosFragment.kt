@@ -63,6 +63,7 @@ class VideosFragment : Fragment() {
     private lateinit var viewModel: FilesViewModel
     private var isAscending = false
     private var isPlaylistView = false
+    private var isFolder = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -131,7 +132,8 @@ class VideosFragment : Fragment() {
     }
 
     private fun setupHistoryAdapter() {
-        videoHistoryAdapter = VideoHistoryAdapter(requireContext(), videoHistoryList,
+        videoHistoryAdapter = VideoHistoryAdapter(
+            requireContext(), videoHistoryList,
             onItemClick = { position ->
                 val video = videoHistoryList[position]
                 val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
@@ -142,38 +144,40 @@ class VideosFragment : Fragment() {
                     position
                 )
                 findNavController().navigate(action)
-        })
+            })
         binding.historyRV.adapter = videoHistoryAdapter
     }
+
     private fun setupVideoAdapter() {
-        videoAdapter = VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
-            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                performOptionsMenuClick(position, anchorView)
-            }
+        videoAdapter =
+            VideosAdapter(requireContext(), videoList, object : OptionsMenuClickListener {
+                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                    performOptionsMenuClick(position, anchorView)
+                }
 
-            override fun onItemClick(position: Int) {
-                val videos = videoAdapter.currentList
-                if (position !in videos.indices) return  // prevents crash
-                val video = videos[position]
-                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                    video.contentUri,
-                    videos.map { it.title }.toTypedArray(),
-                    true,
-                    videos.map { it.contentUri }.toTypedArray(),
-                    position
-                )
-                findNavController().navigate(action)
-                viewModel.updateVideoIsHistory(video.id, true)
-            }
+                override fun onItemClick(position: Int) {
+                    val videos = videoAdapter.currentList
+                    if (position !in videos.indices) return  // prevents crash
+                    val video = videos[position]
+                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                        video.contentUri,
+                        videos.map { it.title }.toTypedArray(),
+                        true,
+                        videos.map { it.contentUri }.toTypedArray(),
+                        position
+                    )
+                    findNavController().navigate(action)
+                    viewModel.updateVideoIsHistory(video.id, true)
+                }
 
-            override fun onLongItemClick(position: Int) {
-                enterSelectionMode(position)
-            }
+                override fun onLongItemClick(position: Int) {
+                    enterSelectionMode(position)
+                }
 
-            override fun onSelectionChanged(count: Int) {
-                binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
-            }
-        })
+                override fun onSelectionChanged(count: Int) {
+                    binding.selectAllCheckbox.isChecked = count == videoAdapter.itemCount
+                }
+            })
 
         binding.videoRV.adapter = videoAdapter
     }
@@ -189,34 +193,35 @@ class VideosFragment : Fragment() {
     }
 
     private fun setupPlaylistVideoAdapter() {
-        playlistVideoAdapter = VideosAdapter(requireContext(), videoPlaylistList, object : OptionsMenuClickListener {
-            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                performOptionsMenuClick(position, anchorView)
-            }
+        playlistVideoAdapter =
+            VideosAdapter(requireContext(), videoPlaylistList, object : OptionsMenuClickListener {
+                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                    performOptionsMenuClick(position, anchorView)
+                }
 
-            override fun onItemClick(position: Int) {
-                val videos = playlistVideoAdapter.currentList
-                if (position !in videos.indices) return  // prevents crash
-                val video = videos[position]
-                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                    video.contentUri,
-                    videos.map { it.title }.toTypedArray(),
-                    true,
-                    videos.map { it.contentUri }.toTypedArray(),
-                    position
-                )
-                findNavController().navigate(action)
-                viewModel.updateVideoIsHistory(video.id, true)
-            }
+                override fun onItemClick(position: Int) {
+                    val videos = playlistVideoAdapter.currentList
+                    if (position !in videos.indices) return  // prevents crash
+                    val video = videos[position]
+                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+                        video.contentUri,
+                        videos.map { it.title }.toTypedArray(),
+                        true,
+                        videos.map { it.contentUri }.toTypedArray(),
+                        position
+                    )
+                    findNavController().navigate(action)
+                    viewModel.updateVideoIsHistory(video.id, true)
+                }
 
-            override fun onLongItemClick(position: Int) {
-                enterSelectionMode(position)
-            }
+                override fun onLongItemClick(position: Int) {
+                    enterSelectionMode(position)
+                }
 
-            override fun onSelectionChanged(count: Int) {
-                binding.selectAllCheckbox.isChecked = count == playlistVideoAdapter.itemCount
-            }
-        })
+                override fun onSelectionChanged(count: Int) {
+                    binding.selectAllCheckbox.isChecked = count == playlistVideoAdapter.itemCount
+                }
+            })
 
         binding.selectedVideosRV.adapter = playlistVideoAdapter
     }
@@ -240,12 +245,15 @@ class VideosFragment : Fragment() {
 
     /** ------------------ TAB HANDLER ------------------ **/
     private fun setupTabClicks() {
-        binding.tabVideos.setOnClickListener { highlightTab(binding.tabVideos)
-           setupFolderBack()
+        binding.tabVideos.setOnClickListener {
+            highlightTab(binding.tabVideos)
+            setupFolderBack()
         }
         binding.tabFolder.setOnClickListener { highlightTab(binding.tabFolder) }
-        binding.tabPlaylist.setOnClickListener { highlightTab(binding.tabPlaylist)
-        setupFolderBack()}
+        binding.tabPlaylist.setOnClickListener {
+            highlightTab(binding.tabPlaylist)
+            setupFolderBack()
+        }
     }
 
     private fun highlightTab(selected: TextView) {
@@ -265,6 +273,7 @@ class VideosFragment : Fragment() {
                 showSection(video = true, folder = false, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 isPlaylistView = false
+                isFolder = false
                 observeVideos()
             }
 
@@ -274,6 +283,7 @@ class VideosFragment : Fragment() {
                 showSection(video = false, folder = true, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 isPlaylistView = false
+                isFolder = true
                 binding.emptyView.visibility = View.GONE
             }
 
@@ -285,6 +295,7 @@ class VideosFragment : Fragment() {
                 setupPlaylistVideoAdapter()
                 observePlaylistVideos()
                 isPlaylistView = true
+                isFolder = false
                 setupBottomActions()
             }
         }
@@ -371,22 +382,47 @@ class VideosFragment : Fragment() {
 
     private fun setupSearch() {
         binding.searchIcon.setOnClickListener {
-            binding.searchLayout.visibility = View.VISIBLE
-            binding.topLayout.visibility = View.GONE
-            binding.videoRV.visibility = View.GONE
-            binding.emptyView.visibility = View.GONE
+
             binding.searchTIET.text.clear()
             binding.searchTIET.requestFocus()
+            if (isPlaylistView) {
+                binding.selectedVideosRV.visibility = View.GONE
+            }
+            else if (isFolder) {
+                binding.videoFolderRV.visibility = View.GONE
+
+            } else {
+                binding.videoRV.visibility = View.GONE
+            }
+            binding.topLayout.visibility = View.GONE
+            binding.searchLayout.visibility = View.VISIBLE
+            binding.emptyView.visibility = View.GONE
+            binding.historyLayout.visibility = View.GONE
+            binding.customTabs.visibility = View.GONE
+
             val imm =
                 requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(binding.searchTIET, InputMethodManager.SHOW_IMPLICIT)
         }
 
         binding.backArrow.setOnClickListener {
+
+            if (isPlaylistView) {
+                binding.selectedVideosRV.visibility = View.VISIBLE
+
+            } else if (isFolder) {
+                binding.videoFolderRV.visibility = View.VISIBLE
+
+            } else {
+
+                binding.videoRV.visibility = View.VISIBLE
+            }
             binding.searchLayout.visibility = View.GONE
             binding.topLayout.visibility = View.VISIBLE
-            binding.videoRV.visibility = View.VISIBLE
             binding.emptyView.visibility = View.GONE
+            binding.historyLayout.visibility = View.VISIBLE
+            binding.customTabs.visibility = View.VISIBLE
+
             videoAdapter.filterList(videoList)
             val imm =
                 requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -435,7 +471,8 @@ class VideosFragment : Fragment() {
 
                     refreshVisibleList()   // <--- IMPORTANT FIX
 
-                    Toast.makeText(requireContext(),
+                    Toast.makeText(
+                        requireContext(),
                         "File deleted successfully", Toast.LENGTH_SHORT
                     ).show()
 
@@ -478,39 +515,25 @@ class VideosFragment : Fragment() {
         }
 
         binding.actionPrivate.setOnClickListener {
-            Log.e("is private", "selectedVideos.toString()")
-            if (isPlaylistView) {
-                val selectedVideos = playlistVideoAdapter.selectedItems.map { playlistVideoAdapter.currentList[it] }
 
-                Log.e("is private", selectedVideos.toString())
-                for (video in selectedVideos) {
-                    addFilesToPrivate(video.id, false, playlistVideoAdapter)
 
-                    // Update local cache
-                    videoPlaylistList.find { it.id == video.id }?.isPrivate = false
-                }
+            Log.e("not playlist", isPlaylistView.toString())
+            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
 
-                exitSelectionMode()
+            for (video in selectedVideos) {
+                addFilesToPrivate(video.id, true, videoAdapter)
 
-            } else {
-
-                Log.e("not playlist", isPlaylistView.toString())
-                val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
-
-                for (video in selectedVideos) {
-                    addFilesToPrivate(video.id, true, videoAdapter)
-
-                    // Update local cache
-                    videoList.find { it.id == video.id }?.isPrivate = true
-                }
-
-                exitSelectionMode()
-
-                // Refresh folder view if inside folder
-                if (selectedFolder != null) {
-                    openFolderVideos(selectedFolder!!)
-                }
+                // Update local cache
+                videoList.find { it.id == video.id }?.isPrivate = true
             }
+
+            exitSelectionMode()
+
+            // Refresh folder view if inside folder
+            if (selectedFolder != null) {
+                openFolderVideos(selectedFolder!!)
+            }
+
 
         }
 
@@ -535,9 +558,12 @@ class VideosFragment : Fragment() {
             videoHistoryList.clear()
             videoHistoryList.addAll(historyVideos)
             videoHistoryAdapter.notifyDataSetChanged()
-            binding.historyRV.visibility = if (historyVideos.isNotEmpty()) View.VISIBLE else View.GONE
-            binding.historyEmptyView.visibility = if (historyVideos.isEmpty()) View.VISIBLE else View.GONE
-            binding.delHistoryIcon.visibility = if (historyVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.historyRV.visibility =
+                if (historyVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.historyEmptyView.visibility =
+                if (historyVideos.isEmpty()) View.VISIBLE else View.GONE
+            binding.delHistoryIcon.visibility =
+                if (historyVideos.isNotEmpty()) View.VISIBLE else View.GONE
 
             binding.progressBar.visibility = View.GONE
         }
@@ -548,7 +574,8 @@ class VideosFragment : Fragment() {
             videoPlaylistList.clear()
             videoPlaylistList.addAll(playlistVideos)
             playlistVideoAdapter.notifyDataSetChanged()
-            binding.selectedVideosRV.visibility = if (playlistVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.selectedVideosRV.visibility =
+                if (playlistVideos.isNotEmpty()) View.VISIBLE else View.GONE
             binding.emptyView.visibility = if (playlistVideos.isEmpty()) View.VISIBLE else View.GONE
 
             binding.progressBar.visibility = View.GONE
@@ -590,6 +617,7 @@ class VideosFragment : Fragment() {
             View.VISIBLE
 
     }
+
     private var selectedFolder: VideoFolder? = null
 
     private fun refreshVisibleList() {
