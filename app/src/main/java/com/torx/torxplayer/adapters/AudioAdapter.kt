@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.net.toUri
@@ -21,10 +22,16 @@ import com.google.android.material.card.MaterialCardView
 import com.torx.torxplayer.R
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.OptionsMenuClickListener
+import com.torx.torxplayer.model.VideosModel
 
 class AudioAdapter(val context: Context, private var audioList: MutableList<AudiosModel>,
                    private var optionsMenuClickListener: OptionsMenuClickListener
 ) : RecyclerView.Adapter<AudioAdapter.AudioViewHolder>() {
+
+    var isSelectionMode = false
+    val selectedItems = mutableSetOf<Int>()
+    val currentList: List<AudiosModel>
+        get() = audioList
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
@@ -88,8 +95,25 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
             optionsMenuClickListener.onOptionsMenuClicked(position, it)
         }
 
-        holder.audioCard.setOnClickListener {
-            optionsMenuClickListener.onItemClick(position)
+        holder.checkBox.visibility = if (isSelectionMode) View.VISIBLE else View.INVISIBLE
+        holder.checkBox.setOnCheckedChangeListener(null)
+        holder.checkBox.isChecked = selectedItems.contains(position)
+        holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) selectedItems.add(position) else selectedItems.remove(position)
+            optionsMenuClickListener.onSelectionChanged(selectedItems.size)
+        }
+
+        holder.cardItem.setOnClickListener {
+            if (isSelectionMode) {
+                toggleSelection(position)
+            } else {
+                optionsMenuClickListener.onItemClick(position)
+            }
+        }
+
+        holder.cardItem.setOnLongClickListener {
+            if (!isSelectionMode) optionsMenuClickListener.onLongItemClick(position)
+            true
         }
     }
 
@@ -102,13 +126,22 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
         return audioList.size
     }
 
+    private fun toggleSelection(position: Int) {
+        if (selectedItems.contains(position)) selectedItems.remove(position)
+        else selectedItems.add(position)
+        notifyItemChanged(position)
+        optionsMenuClickListener.onSelectionChanged(selectedItems.size)
+    }
+
     class AudioViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val title: TextView = itemView.findViewById(R.id.audioTitle)
         val thumbnail: ImageView = itemView.findViewById(R.id.audioThumbnail)
         val moreOptions: ImageView = itemView.findViewById(R.id.audioMoreOptionsIcon)
         val duration: TextView = itemView.findViewById(R.id.audioDuration)
         val size: TextView = itemView.findViewById(R.id.audioSize)
-        val audioCard: MaterialCardView = itemView.findViewById(R.id.audioCardLayout)
+        val cardItem: MaterialCardView = itemView.findViewById(R.id.audioCardLayout)
+
+        val checkBox: CheckBox = itemView.findViewById(R.id.audioCheckBox)
     }
 
     private fun formatVideoDuration(durationMillis: Long): String {

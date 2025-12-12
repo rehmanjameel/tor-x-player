@@ -1,5 +1,6 @@
 package com.torx.torxplayer.fragments
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
@@ -36,12 +37,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
+import com.torx.torxplayer.adapters.AudioFolderAdapter
 import com.torx.torxplayer.databinding.FragmentAudiosBinding
+import com.torx.torxplayer.model.AudioFolderModel
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class AudiosFragment : Fragment() {
 
@@ -276,6 +280,27 @@ class AudiosFragment : Fragment() {
             }
         }
     }
+
+    /** ---------- FOLDER ADAPTER ---------- **/
+    private lateinit var folderAdapter: AudioFolderAdapter
+
+    private fun setupFolderAdapter() {
+        val allAudios = fetchAudioFiles(requireContext())
+
+        val folderList = getAudioFoldersFromList(allAudios)
+
+        folderAdapter = AudioFolderAdapter(folderList) { folder ->
+            showAudioList(folder)
+        }
+
+        if (folderList.isNotEmpty()) {
+            binding.audioFolderRV.adapter = folderAdapter
+        } else {
+            binding.audioFolderRV.visibility = View.GONE
+            binding.emptyView.visibility = View.VISIBLE
+            binding.emptyView.text = "No folders found"
+        }
+    }
     private fun showMainMenu(view: View) {
         val popupMenu = PopupMenu(requireContext(), view)
         popupMenu.inflate(R.menu.main_menu)
@@ -396,6 +421,25 @@ class AudiosFragment : Fragment() {
 
         return audioList
     }
+
+    @SuppressLint("Range")
+    fun getAudioFoldersFromList(audioList: List<AudiosModel>): List<AudioFolderModel> {
+
+        val folderMap = HashMap<String, MutableList<AudiosModel>>()
+
+        for (audio in audioList) {
+            val file = File(audio.path)
+            val parent = file.parentFile ?: continue
+            val folderName = parent.name
+
+            folderMap.getOrPut(folderName) { mutableListOf() }.add(audio)
+        }
+
+        return folderMap.map { (folderName, list) ->
+            AudioFolderModel(folderName, list)
+        }
+    }
+
 
     // this function will be called when the fragment is created when to check the permissions
     private val storagePermissionLauncher =

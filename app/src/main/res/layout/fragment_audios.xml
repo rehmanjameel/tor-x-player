@@ -278,6 +278,51 @@
 
     </RelativeLayout>
 
+    <!-- ==================== SELECT ALL ==================== -->
+    <CheckBox
+        android:id="@+id/selectAllCheckbox"
+        style="@style/CustomCheckboxBrand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="60dp"
+        android:padding="10dp"
+        android:text="Select All"
+        android:textColor="@color/white"
+        android:visibility="gone"
+        android:layout_alignParentEnd="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/folderBackLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        android:layout_below="@id/customTabs"
+        app:layout_constraintTop_toBottomOf="@id/customTabs">
+
+        <ImageView
+            android:id="@+id/folderBackArrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:padding="10dp"
+            android:src="@drawable/outline_keyboard_backspace_24"
+            app:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/folderName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:text="Folder Name"/>
+
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/audioRV"
         android:layout_width="match_parent"
@@ -289,6 +334,26 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/audioFolderRV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="00dp"
+        android:paddingBottom="0dp"
+        android:visibility="gone"
+        android:layout_below="@id/customTabs"
+        app:layout_constraintTop_toBottomOf="@id/customTabs" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/selectedAudiosRV"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="00dp"
+        android:paddingBottom="0dp"
+        android:visibility="gone"
+        android:layout_below="@id/customTabs"
+        app:layout_constraintTop_toBottomOf="@id/customTabs" />
 
     <TextView
         android:id="@+id/emptyView"
