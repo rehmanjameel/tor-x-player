@@ -1,5 +1,6 @@
 package com.torx.torxplayer.fragments
 
+import android.Manifest
 import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
@@ -9,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -101,7 +103,8 @@ class VideosFragment : Fragment() {
         setupTabClicks()
         setupBackPress()
         observeVideos()
-        checkMediaPermission()
+//        checkMediaPermission()
+        requestMediaPermissions()
         setupMainMenu()
         setupBottomActions()
         observeHistoryVideos()
@@ -387,8 +390,7 @@ class VideosFragment : Fragment() {
             binding.searchTIET.requestFocus()
             if (isPlaylistView) {
                 binding.selectedVideosRV.visibility = View.GONE
-            }
-            else if (isFolder) {
+            } else if (isFolder) {
                 binding.videoFolderRV.visibility = View.GONE
 
             } else {
@@ -947,6 +949,92 @@ class VideosFragment : Fragment() {
         } catch (e: Exception) {
             null
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (hasVideoPermission(requireContext())) {
+            loadMediaFilesIntoDB()
+        }
+    }
+    private val mediaPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+
+            val videoGranted =
+                permissions[getVideoPermission()] == true
+
+            val audioGranted =
+                permissions[getAudioPermission()] == true
+
+            if (!videoGranted || !audioGranted) {
+                openAppSettings()
+                Toast.makeText(requireContext(), "Storage permission required", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                lifecycleScope.launch {
+                    val currentVideos = withContext(Dispatchers.IO) { viewModel.getVideoCount() }
+                    if (currentVideos == 0) loadMediaFilesIntoDB() else binding.progressBar.visibility =
+                        View.GONE
+                }
+                requestNotificationPermissionIfNeeded()
+            }
+        }
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) {
+                Toast.makeText(requireContext(), "Notifications disabled", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+
+    private fun getVideoPermission(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            Manifest.permission.READ_MEDIA_VIDEO
+        else
+            Manifest.permission.READ_EXTERNAL_STORAGE
+
+    private fun getAudioPermission(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            Manifest.permission.READ_MEDIA_AUDIO
+        else
+            Manifest.permission.READ_EXTERNAL_STORAGE
+
+    fun hasVideoPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            getVideoPermission()
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestMediaPermissions() {
+        val permissions = arrayOf(
+            getVideoPermission(),
+            getAudioPermission()
+        )
+
+        mediaPermissionLauncher.launch(permissions)
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+
+    private fun openAppSettings() {
+        val intent = Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.fromParts("package", requireContext().packageName, null)
+        )
+        startActivity(intent)
     }
 
 }
