@@ -2,16 +2,22 @@ package com.torx.torxplayer.fragments
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ArrayAdapter
 import androidx.activity.OnBackPressedCallback
 import androidx.navigation.fragment.findNavController
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentDownloadBinding
+import org.json.JSONArray
+import java.net.URL
+import java.net.URLEncoder
 
 class DownloadFragment : Fragment() {
 
@@ -87,6 +93,26 @@ class DownloadFragment : Fragment() {
             findNavController().navigateUp()
         }
 
+        binding.searchTIET.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                enterSearchMode()
+            } else {
+                exitSearchMode()
+            }
+        }
+
+        binding.searchTIET.setOnItemClickListener { _, _, position, _ ->
+            val query = binding.searchTIET.adapter.getItem(position) as String
+            openSearch(query)
+        }
+
+        binding.searchTIET.setOnEditorActionListener { _, _, _ ->
+            openSearch(binding.searchTIET.text.toString())
+            true
+        }
+
+        setupSearchSuggestions()
+
         return binding.root
     }
 
@@ -101,5 +127,84 @@ class DownloadFragment : Fragment() {
         binding.mediaWV.loadUrl(url)
     }
 
+    private fun setupSearchSuggestions() {
+        val suggestions = mutableListOf<String>()
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            suggestions
+        )
+        binding.searchTIET.setAdapter(adapter)
+
+        binding.searchTIET.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {}
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString()
+                if (query.length < 2) return
+
+                fetchGoogleSuggestions(query) { result ->
+                    suggestions.clear()
+                    suggestions.addAll(result)
+                    adapter.notifyDataSetChanged()
+                    binding.searchTIET.showDropDown()
+                }
+            }
+        })
+
+    }
+
+    private fun fetchGoogleSuggestions(query: String, callback: (List<String>) -> Unit) {
+        Thread {
+            try {
+                val url =
+                    "https://suggestqueries.google.com/complete/search?client=firefox&q=$query"
+                val json = URL(url).readText()
+                val array = JSONArray(json).getJSONArray(1)
+
+                val list = mutableListOf<String>()
+                for (i in 0 until array.length()) {
+                    list.add(array.getString(i))
+                }
+
+                requireActivity().runOnUiThread {
+                    callback(list)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }.start()
+    }
+
+    private fun enterSearchMode() {
+        binding.downloadLinksLayout.visibility = View.GONE
+//        binding.ytLayout.visibility = View.GONE
+//        binding.instaLayout.visibility = View.GONE
+//        binding.tiktokLayout.visibility = View.GONE
+        binding.mediaWV.visibility = View.GONE
+
+        binding.webviewOverlay.visibility = View.VISIBLE
+    }
+
+    private fun exitSearchMode() {
+        binding.downloadLinksLayout.visibility = View.VISIBLE
+//        binding.ytLayout.visibility = View.VISIBLE
+//        binding.instaLayout.visibility = View.VISIBLE
+//        binding.tiktokLayout.visibility = View.VISIBLE
+
+        binding.webviewOverlay.visibility = View.GONE
+    }
+
+    private fun openSearch(query: String) {
+        val url =
+            if (query.startsWith("http")) query
+            else "https://www.google.com/search?q=${URLEncoder.encode(query, "UTF-8")}"
+
+        binding.mediaWV.visibility = View.VISIBLE
+        binding.mediaWV.loadUrl(url)
+        binding.searchTIET.clearFocus()
+    }
 
 }

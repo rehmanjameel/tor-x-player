@@ -29,7 +29,7 @@
             android:gravity="center_vertical"
             android:layout_marginEnd="10dp">
 
-            <EditText
+            <AutoCompleteTextView
                 android:id="@+id/searchTIET"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
@@ -43,7 +43,10 @@
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
                 android:textColor="@color/black"
-                android:textColorHint="@color/gray" />
+                android:textColorHint="@color/gray"
+                android:completionThreshold="1"
+                android:inputType="text"
+                />
 
             <TextView
                 android:id="@+id/searchTV"
@@ -61,6 +64,7 @@
     </RelativeLayout>
 
     <LinearLayout
+        android:id="@+id/downloadLinksLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"

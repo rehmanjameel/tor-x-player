@@ -17,6 +17,10 @@ class FileRepository(private val fileDao: FileDao) {
 
     val allPrivateVideos: LiveData<MutableList<VideosModel>> = fileDao.getPrivateVideo()
 
+    // new update
+    val allPlaylistAudios: LiveData<MutableList<AudiosModel>> = fileDao.getPlaylistAudio()
+    val allHistoryAudios: LiveData<MutableList<AudiosModel>> = fileDao.getHistoryAudio()
+
     suspend fun insertVideos(video: VideosModel) {
         fileDao.insertVideo(video)
     }
@@ -103,5 +107,16 @@ class FileRepository(private val fileDao: FileDao) {
         fileDao.clearAllAudios()
     }
 
+    suspend fun updateAudioIsPlaylist(audioId: Long, isPlaylist: Boolean) {
+        fileDao.updateAudioIsPlaylist(audioId, isPlaylist)
+    }
+
+    suspend fun updateAudioIsHistory(audioId: Long, isHistory: Boolean) {
+        fileDao.updateAudioIsHistory(audioId, isHistory)
+    }
+
+    suspend fun clearAllAudioHistory() {
+        fileDao.clearAllAudioHistory()
+    }
 
 }

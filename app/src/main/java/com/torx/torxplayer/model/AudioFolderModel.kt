@@ -2,5 +2,6 @@ package com.torx.torxplayer.model
 
 data class AudioFolderModel(
     val folderName: String,
-    val audioList: List<AudiosModel>
+    val folderPath: String,
+    val audioCount: Int
 )

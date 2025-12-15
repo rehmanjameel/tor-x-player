@@ -19,6 +19,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.addCallback
@@ -34,13 +35,20 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.torx.torxplayer.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
 import com.torx.torxplayer.adapters.AudioFolderAdapter
+import com.torx.torxplayer.adapters.AudioHistoryAdapter
+import com.torx.torxplayer.adapters.VideoFolderAdapter
+import com.torx.torxplayer.adapters.VideoHistoryAdapter
+import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentAudiosBinding
 import com.torx.torxplayer.model.AudioFolderModel
 import com.torx.torxplayer.model.AudiosModel
+import com.torx.torxplayer.model.VideoFolder
+import com.torx.torxplayer.model.VideosModel
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,11 +60,22 @@ class AudiosFragment : Fragment() {
     private lateinit var binding: FragmentAudiosBinding
 
     private lateinit var audioAdapter: AudioAdapter
+    private lateinit var playlistAudioAdapter: AudioAdapter
+    private lateinit var audioHistoryAdapter: AudioHistoryAdapter
+
+    private lateinit var folderAdapter: AudioFolderAdapter
+    private var selectedFolder: AudioFolderModel? = null
+    private var AudioHistoryList = mutableListOf<AudiosModel>()
+    private var videoPlaylistList = mutableListOf<AudiosModel>()
     private var audioList = mutableListOf<AudiosModel>()
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private lateinit var viewModel: FilesViewModel
 
     private var lastDeletedUri: Uri? = null
+
+    private var isAscending = false
+    private var isPlaylistView = false
+    private var isFolder = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,11 +84,7 @@ class AudiosFragment : Fragment() {
         // Inflate the layout for this fragment
         binding = FragmentAudiosBinding.inflate(inflater, container, false)
 
-        binding.audioRV.layoutManager = GridLayoutManager(
-            requireContext(), 1,
-            LinearLayoutManager.VERTICAL, false
-        )
-        binding.audioRV.setHasFixedSize(true)
+        setupRecyclerView()
 
         // Register the launcher for delete request
         deleteRequestLauncher =
@@ -136,6 +151,12 @@ class AudiosFragment : Fragment() {
 
             binding.audioRV.visibility = View.GONE
             binding.emptyView.visibility = View.GONE
+            binding.historyLayout.visibility = View.GONE
+            binding.historyEmptyView.visibility = View.GONE
+            binding.customTabs.visibility = View.GONE
+            binding.folderBackLayout.visibility = View.GONE
+            binding.selectedAudiosRV.visibility = View.GONE
+            binding.audioFolderRV.visibility = View.GONE
 
             val imm =
                 requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -148,6 +169,11 @@ class AudiosFragment : Fragment() {
 
             binding.audioRV.visibility = View.VISIBLE
             binding.emptyView.visibility = View.GONE
+
+            binding.historyLayout.visibility = View.VISIBLE
+            binding.historyEmptyView.visibility = View.VISIBLE
+            binding.customTabs.visibility = View.VISIBLE
+
             audioAdapter.filterList(audioList) // restore original data
 
             binding.searchTIET.clearFocus()
@@ -184,50 +210,22 @@ class AudiosFragment : Fragment() {
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
         Log.e("audio list", "$audioList")
-        audioAdapter = AudioAdapter(requireContext(), audioList, object : OptionsMenuClickListener {
-            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
-                performOptionsMenuClick(position, anchorView)
-            }
 
-            override fun onItemClick(position: Int) {
-                val audio = audioList[position]
-                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                    audio.uri,
-                    audioList.map { it.title }.toTypedArray(),
-                    true,
-                    audioList.map { it.uri }.toTypedArray(),
-                    position
-                )
-                findNavController().navigate(action)
-            }
-
-            override fun onLongItemClick(position: Int) {
-
-            }
-
-            override fun onSelectionChanged(count: Int) {
-
-            }
-        })
-        binding.audioRV.adapter = audioAdapter
-
-        // Observe database once here
-        viewModel.allPublicAudios.observe(viewLifecycleOwner) { audios ->
-            Log.e("audios list", "$audios")
-            audioList.clear()
-            audioList.addAll(audios)
-
-            audioAdapter.notifyDataSetChanged()
-            if (audios.isNotEmpty()) {
-                binding.audioRV.visibility = View.VISIBLE
-                binding.emptyView.visibility = View.GONE
-            } else {
-                binding.audioRV.visibility = View.GONE
-                binding.emptyView.visibility = View.VISIBLE
-            }
-            binding.progressBar.visibility = View.GONE
-        }
         checkMediaPermission()
+
+//        setupRecyclerView()
+        observeAudios()
+        setupAudioAdapter()
+        setupHistoryAdapter()
+        setupTabClicks()
+        observeHistoryAudios()
+        setupBottomActions()
+        setupFolderAdapter()
+
+        binding.swapIcon.setOnClickListener {
+            isAscending = !isAscending
+            applySorting()
+        }
 
         binding.mainMenu.setOnClickListener {
             showMainMenu(it)
@@ -248,49 +246,218 @@ class AudiosFragment : Fragment() {
 
         }
 
-    }
+        binding.folderBackArrow.setOnClickListener {
+            showSection(audio = false, folder = true, selected = false, showBack = false)
 
-    private fun highlightTab(selected: TextView) {
+            setupFolderBack()
+        }
 
-        // Reset underline visibility
-        binding.lineAudios.visibility = View.GONE
-        binding.lineFolder.visibility = View.GONE
-        binding.linePlaylist.visibility = View.GONE
-
-        // Reset colors
-        binding.tabAudios.setTextColor(resources.getColor(R.color.white))
-        binding.tabFolder.setTextColor(resources.getColor(R.color.white))
-        binding.tabPlaylist.setTextColor(resources.getColor(R.color.white))
-
-        // Apply selected underline + color
-        when (selected) {
-            binding.tabAudios -> {
-                binding.lineAudios.visibility = View.VISIBLE
-                binding.tabAudios.setTextColor(resources.getColor(R.color.green))
-            }
-
-            binding.tabFolder -> {
-                binding.lineFolder.visibility = View.VISIBLE
-                binding.tabFolder.setTextColor(resources.getColor(R.color.green))
-            }
-
-            binding.tabPlaylist -> {
-                binding.linePlaylist.visibility = View.VISIBLE
-                binding.tabPlaylist.setTextColor(resources.getColor(R.color.green))
+        binding.delHistoryIcon.setOnClickListener {
+            if (AudioHistoryList.isNotEmpty()) {
+                viewModel.clearAllAudioHistory()
+                AudioHistoryList.clear()
+                audioHistoryAdapter.notifyDataSetChanged()
+                binding.historyRV.visibility = View.GONE
+                binding.historyEmptyView.visibility = View.VISIBLE
+                binding.delHistoryIcon.visibility = View.GONE
             }
         }
     }
 
+    private fun setupRecyclerView() {
+        binding.audioRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 1)
+            setHasFixedSize(true)
+        }
+
+        binding.audioFolderRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 2)
+            setHasFixedSize(true)
+        }
+
+        binding.selectedAudiosRV.apply {
+            layoutManager = GridLayoutManager(requireContext(), 1)
+            setHasFixedSize(true)
+        }
+    }
+
+    private fun setupAudioAdapter() {
+        audioAdapter = AudioAdapter(requireContext(), audioList, object : OptionsMenuClickListener {
+            override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                performOptionsMenuClick(position, anchorView)
+            }
+
+            override fun onItemClick(position: Int) {
+                val audio = audioList[position]
+                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+                    audio.uri,
+                    audioList.map { it.title }.toTypedArray(),
+                    true,
+                    audioList.map { it.uri }.toTypedArray(),
+                    position
+                )
+                findNavController().navigate(action)
+                viewModel.updateAudioIsHistory(audio.id, true)
+            }
+
+            override fun onLongItemClick(position: Int) {
+
+                enterSelectionMode(position)
+
+            }
+
+            override fun onSelectionChanged(count: Int) {
+                binding.selectAllCheckbox.isChecked = count == audioAdapter.itemCount
+            }
+        })
+        binding.audioRV.adapter = audioAdapter
+    }
+
+    private fun setupPlaylistAudioAdapter() {
+        playlistAudioAdapter =
+            AudioAdapter(requireContext(), videoPlaylistList, object : OptionsMenuClickListener {
+                override fun onOptionsMenuClicked(position: Int, anchorView: View) {
+                    performOptionsMenuClick(position, anchorView)
+                }
+
+                override fun onItemClick(position: Int) {
+                    val audios = playlistAudioAdapter.currentList
+                    if (position !in audios.indices) return  // prevents crash
+                    val video = audios[position]
+                    val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+                        video.uri,
+                        audios.map { it.title }.toTypedArray(),
+                        true,
+                        audios.map { it.uri }.toTypedArray(),
+                        position
+                    )
+                    findNavController().navigate(action)
+                    viewModel.updateVideoIsHistory(video.id, true)
+                }
+
+                override fun onLongItemClick(position: Int) {
+                    enterSelectionMode(position)
+                }
+
+                override fun onSelectionChanged(count: Int) {
+                    binding.selectAllCheckbox.isChecked = count == playlistAudioAdapter.itemCount
+                }
+            })
+
+        binding.selectedAudiosRV.adapter = playlistAudioAdapter
+    }
+
+    private fun setupHistoryAdapter() {
+        audioHistoryAdapter = AudioHistoryAdapter(
+            requireContext(), AudioHistoryList,
+            onItemClick = { position ->
+                val video = AudioHistoryList[position]
+                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+                    video.uri,
+                    AudioHistoryList.map { it.title }.toTypedArray(),
+                    true,
+                    AudioHistoryList.map { it.uri }.toTypedArray(),
+                    position
+                )
+                findNavController().navigate(action)
+            })
+        binding.historyRV.adapter = audioHistoryAdapter
+    }
+
+    private fun applySorting() {
+        val sortedList = if (isAscending) {
+            audioList.sortedBy { it.id }
+        } else {
+            audioList.sortedByDescending { it.id }
+        }
+
+        audioAdapter.filterList(sortedList.toMutableList())
+    }
+
+    /** ------------------ TAB HANDLER ------------------ **/
+    private fun setupTabClicks() {
+        binding.tabAudios.setOnClickListener {
+            highlightTab(binding.tabAudios)
+            setupFolderBack()
+        }
+        binding.tabFolder.setOnClickListener { highlightTab(binding.tabFolder) }
+        binding.tabPlaylist.setOnClickListener {
+            highlightTab(binding.tabPlaylist)
+            setupFolderBack()
+        }
+    }
+
+    private fun highlightTab(selected: TextView) {
+
+        // reset underlines
+        listOf(binding.lineAudios, binding.lineFolder, binding.linePlaylist)
+            .forEach { it.visibility = View.GONE }
+
+        // reset colors
+        listOf(binding.tabAudios, binding.tabFolder, binding.tabPlaylist)
+            .forEach { it.setTextColor(resources.getColor(R.color.white)) }
+
+        when (selected) {
+            binding.tabAudios -> {
+                binding.lineAudios.visibility = View.VISIBLE
+                selected.setTextColor(resources.getColor(R.color.green))
+                showSection(audio = true, folder = false, selected = false, showBack = false)
+                setAudioRvTop(R.id.customTabs)
+                isPlaylistView = false
+                isFolder = false
+                observeAudios()
+            }
+
+            binding.tabFolder -> {
+                binding.lineFolder.visibility = View.VISIBLE
+                selected.setTextColor(resources.getColor(R.color.green))
+                showSection(audio = false, folder = true, selected = false, showBack = false)
+                setAudioRvTop(R.id.customTabs)
+                isPlaylistView = false
+                isFolder = true
+                binding.emptyView.visibility = View.GONE
+            }
+
+            binding.tabPlaylist -> {
+                binding.linePlaylist.visibility = View.VISIBLE
+                selected.setTextColor(resources.getColor(R.color.green))
+                showSection(audio = false, folder = false, selected = true, showBack = false)
+                setAudioRvTop(R.id.customTabs)
+                setupPlaylistAudioAdapter()
+                observePlaylistAudios()
+                isPlaylistView = true
+                isFolder = false
+                setupBottomActions()
+            }
+        }
+    }
+
+    private fun observeAudios() {
+        // Observe database once here
+        viewModel.allPublicAudios.observe(viewLifecycleOwner) { audios ->
+            Log.e("audios list", "$audios")
+            audioList.clear()
+            audioList.addAll(audios)
+
+            audioAdapter.notifyDataSetChanged()
+            if (audios.isNotEmpty()) {
+                binding.audioRV.visibility = View.VISIBLE
+                binding.emptyView.visibility = View.GONE
+            } else {
+                binding.audioRV.visibility = View.GONE
+                binding.emptyView.visibility = View.VISIBLE
+            }
+            binding.progressBar.visibility = View.GONE
+        }
+    }
+
     /** ---------- FOLDER ADAPTER ---------- **/
-    private lateinit var folderAdapter: AudioFolderAdapter
-
     private fun setupFolderAdapter() {
-        val allAudios = fetchAudioFiles(requireContext())
+        val folderList = getAudioFolders(requireContext())
 
-        val folderList = getAudioFoldersFromList(allAudios)
-
-        folderAdapter = AudioFolderAdapter(folderList) { folder ->
-            showAudioList(folder)
+        folderAdapter = AudioFolderAdapter(requireContext(), folderList) { folder ->
+            selectedFolder = folder
+            openFolderVideos(folder)
         }
 
         if (folderList.isNotEmpty()) {
@@ -301,6 +468,281 @@ class AudiosFragment : Fragment() {
             binding.emptyView.text = "No folders found"
         }
     }
+
+    private fun openFolderVideos(folder: AudioFolderModel) {
+
+        val audiosInFolder = audioList.filter {
+            it.path!!.startsWith(folder.folderPath) && !it.isPrivate
+        }.toMutableList()
+
+        audioAdapter.filterList(audiosInFolder)
+
+        binding.folderName.text = folder.folderName
+
+        showSection(audio = true, folder = false, selected = false, showBack = true)
+
+        setAudioRvTop(R.id.folderBackLayout)
+
+        binding.audioRV.scrollToPosition(0)
+    }
+
+    /** ---------- BACK BUTTON ---------- **/
+    private fun setupFolderBack() {
+        selectedFolder = null
+
+        // Restore full list
+        audioAdapter.filterList(audioList.toMutableList())
+        setAudioRvTop(R.id.customTabs) // move RV back under original layout
+    }
+
+    /** ---------- BACK PRESS ---------- **/
+    private fun setupBackPress() {
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
+            if (audioAdapter.isSelectionMode) {
+                exitSelectionMode()
+                refreshVisibleList()
+            } else {
+                requireActivity().finish()
+            }
+        }
+    }
+
+    private fun setupBottomActions() {
+        binding.selectAllCheckbox.setOnClickListener { toggleSelectAll() }
+        binding.actionDelete.setOnClickListener { deleteSelectedAudios() }
+        binding.actionPlay.setOnClickListener { playSelectedAudios() }
+        binding.actionShare.setOnClickListener { shareSelectedAudios() }
+
+        if (isPlaylistView) {
+            binding.actionDelete.visibility = View.GONE
+            binding.actionPrivate.visibility = View.GONE
+            binding.actionShare.visibility = View.GONE
+            binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_remove_24)
+            binding.playListTxt.text = "Remove List"
+        }
+
+        binding.actionPrivate.setOnClickListener {
+
+
+            Log.e("not playlist", isPlaylistView.toString())
+            val selectedVideos = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
+
+            for (video in selectedVideos) {
+                addFilesToPrivate(video.id, true, audioAdapter)
+
+                // Update local cache
+                audioList.find { it.id == video.id }?.isPrivate = true
+            }
+
+            exitSelectionMode()
+
+            // Refresh folder view if inside folder
+            if (selectedFolder != null) {
+                openFolderVideos(selectedFolder!!)
+            }
+
+
+        }
+
+    }
+
+    private fun observeHistoryAudios() {
+        viewModel.allHistoryAudios.observe(viewLifecycleOwner) { historyAudios ->
+            AudioHistoryList.clear()
+            AudioHistoryList.addAll(historyAudios)
+            audioHistoryAdapter.notifyDataSetChanged()
+            binding.historyRV.visibility =
+                if (historyAudios.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.historyEmptyView.visibility =
+                if (historyAudios.isEmpty()) View.VISIBLE else View.GONE
+            binding.delHistoryIcon.visibility =
+                if (historyAudios.isNotEmpty()) View.VISIBLE else View.GONE
+
+            binding.progressBar.visibility = View.GONE
+        }
+    }
+
+    private fun observePlaylistAudios() {
+        viewModel.allPlaylistAudios.observe(viewLifecycleOwner) { playlistVideos ->
+            videoPlaylistList.clear()
+            videoPlaylistList.addAll(playlistVideos)
+            playlistAudioAdapter.notifyDataSetChanged()
+            binding.selectedAudiosRV.visibility =
+                if (playlistVideos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.emptyView.visibility = if (playlistVideos.isEmpty()) View.VISIBLE else View.GONE
+
+            binding.progressBar.visibility = View.GONE
+        }
+    }
+
+    private fun enterSelectionMode(position: Int) {
+        if (isPlaylistView) {
+            playlistAudioAdapter.isSelectionMode = true
+            playlistAudioAdapter.selectedItems.add(position)
+
+            playlistAudioAdapter.notifyDataSetChanged()
+
+        } else {
+            audioAdapter.isSelectionMode = true
+            audioAdapter.selectedItems.add(position)
+            audioAdapter.notifyDataSetChanged()
+        }
+        binding.bottomActionBar.visibility = View.VISIBLE
+        binding.selectAllCheckbox.visibility = View.VISIBLE
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+            View.GONE
+
+    }
+
+    private fun exitSelectionMode() {
+        if (isPlaylistView) {
+            playlistAudioAdapter.isSelectionMode = false
+            playlistAudioAdapter.selectedItems.clear()
+            playlistAudioAdapter.notifyDataSetChanged()
+        } else {
+            audioAdapter.isSelectionMode = false
+            audioAdapter.selectedItems.clear()
+            audioAdapter.notifyDataSetChanged()
+        }
+        binding.selectAllCheckbox.visibility = View.GONE
+        binding.bottomActionBar.visibility = View.GONE
+        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+            View.VISIBLE
+
+    }
+
+    private fun refreshVisibleList() {
+        if (selectedFolder != null) {
+            openFolderVideos(selectedFolder!!)
+        } else {
+            audioAdapter.filterList(audioList.toMutableList())
+        }
+    }
+
+    private fun toggleSelectAll() {
+        if (isPlaylistView) {
+            if (playlistAudioAdapter.selectedItems.size == playlistAudioAdapter.itemCount) {
+                exitSelectionMode()
+
+            } else {
+
+                playlistAudioAdapter.selectedItems.clear()
+                playlistAudioAdapter.selectedItems.addAll(playlistAudioAdapter.currentList.indices)
+                playlistAudioAdapter.notifyDataSetChanged()
+            }
+        } else {
+
+            if (audioAdapter.selectedItems.size == audioAdapter.itemCount) {
+                exitSelectionMode()
+            } else {
+                audioAdapter.selectedItems.clear()
+                audioAdapter.selectedItems.addAll(audioAdapter.currentList.indices)
+                audioAdapter.notifyDataSetChanged()
+            }
+        }
+    }
+
+    private fun deleteSelectedAudios() {
+        if (!isPlaylistView) {
+            val selectedAudios = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
+
+            for (audio in selectedAudios) {
+                deleteFileFromStorage(audio)
+            }
+            exitSelectionMode()
+            refreshVisibleList()
+        }
+
+    }
+
+    private fun playSelectedAudios() {
+        if (!isPlaylistView) {
+            if (audioAdapter.selectedItems.isNotEmpty()) {
+                val positions = audioAdapter.selectedItems.toList()  // ensure fixed order
+                val source = audioAdapter.currentList
+
+                val firstAudio = source[positions.first()]
+                val uris = positions.map { source[it].uri }.toTypedArray()
+                val titles = positions.map { source[it].title }.toTypedArray()
+
+                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+                    firstAudio.uri, titles, true, uris, 0
+                )
+                findNavController().navigate(action)
+
+                // FIXED – no more crash
+                for (pos in positions) {
+                    val audioId = source[pos].id
+                    Log.e("video ids pos", pos.toString())
+                    Log.e("video ids", audioId.toString())
+                    viewModel.updateAudioIsPlaylist(audioId, true)
+                }
+
+            }
+        } else {
+            if (playlistAudioAdapter.selectedItems.isNotEmpty()) {
+                val positions = playlistAudioAdapter.selectedItems.toList()  // ensure fixed order
+                val source = playlistAudioAdapter.currentList
+
+                for (pos in positions) {
+                    val audioId = source[pos].id
+                    Log.e("audio ids pos", pos.toString())
+                    Log.e("audio ids", audioId.toString())
+                    viewModel.updateAudioIsPlaylist(audioId, false)
+                }
+
+            }
+            exitSelectionMode()
+
+        }
+    }
+
+
+    private fun shareSelectedAudios() {
+        if (!isPlaylistView) {
+            val uris = audioAdapter.selectedItems.map {
+                audioAdapter.currentList[it].uri.toUri()
+            }
+            val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "audio/*"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+            }
+            startActivity(Intent.createChooser(shareIntent, "Share audios"))
+            exitSelectionMode()
+        }
+    }
+
+    /** Show/hide layout groups together */
+    private fun showSection(audio: Boolean, folder: Boolean, selected: Boolean, showBack: Boolean) {
+        binding.audioRV.visibility = if (audio) View.VISIBLE else View.GONE
+        binding.audioFolderRV.visibility = if (folder) View.VISIBLE else View.GONE
+        binding.selectedAudiosRV.visibility = if (selected) View.VISIBLE else View.GONE
+        binding.folderBackLayout.visibility = if (showBack) View.VISIBLE else View.GONE
+    }
+
+    /** ---------- CONSTRAINT CLEAN VERSION ---------- **/
+    private fun setAudioRvTop(anchorId: Int) {
+        val audioRv = binding.audioRV
+        val params = audioRv.layoutParams as RelativeLayout.LayoutParams
+
+        // Remove any TOP/BOTTOM rules first
+        params.removeRule(RelativeLayout.ALIGN_PARENT_TOP)
+        params.removeRule(RelativeLayout.BELOW)
+
+        // Apply new rule: videoRV is below the given anchor view
+        params.addRule(RelativeLayout.BELOW, anchorId)
+
+        audioRv.layoutParams = params
+    }
+
+    private fun addFilesToPrivate(audioId: Long, isPrivate: Boolean, audiosAdapter: AudioAdapter) {
+        viewModel.updateAudioIsPrivate(audioId, isPrivate)
+        Log.e("is private1", isPrivate.toString())
+
+        audiosAdapter.notifyDataSetChanged()
+        Toast.makeText(requireContext(), "Added to private", Toast.LENGTH_SHORT).show()
+    }
+
     private fun showMainMenu(view: View) {
         val popupMenu = PopupMenu(requireContext(), view)
         popupMenu.inflate(R.menu.main_menu)
@@ -422,23 +864,69 @@ class AudiosFragment : Fragment() {
         return audioList
     }
 
-    @SuppressLint("Range")
-    fun getAudioFoldersFromList(audioList: List<AudiosModel>): List<AudioFolderModel> {
+    fun getAudioFolders(context: Context): List<AudioFolderModel> {
+        val folderMap = HashMap<String, MutableList<String>>() // folderPath -> list of videos
 
-        val folderMap = HashMap<String, MutableList<AudiosModel>>()
+        val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.DATA
+        )
 
-        for (audio in audioList) {
-            val file = File(audio.path)
-            val parent = file.parentFile ?: continue
-            val folderName = parent.name
+        val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val sortOrder = MediaStore.Audio.Media.DATE_ADDED + " DESC"
 
-            folderMap.getOrPut(folderName) { mutableListOf() }.add(audio)
+        val cursor = context.contentResolver.query(
+            uri, projection, null, null, sortOrder
+        )
+
+        cursor?.use {
+            val dataCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+
+            while (it.moveToNext()) {
+                val fullPath = it.getString(dataCol)
+
+                // Extract folder path
+                val file = File(fullPath)
+                val folder = file.parent ?: continue
+
+                if (!folderMap.containsKey(folder)) {
+                    folderMap[folder] = mutableListOf()
+                }
+                folderMap[folder]?.add(fullPath)
+            }
         }
 
-        return folderMap.map { (folderName, list) ->
-            AudioFolderModel(folderName, list)
+        // Convert folderMap to ArrayList of VideoFolder
+        val folderList = ArrayList<AudioFolderModel>()
+        for ((folderPath, audios) in folderMap) {
+            folderList.add(
+                AudioFolderModel(
+                    folderName = File(folderPath).name,
+                    folderPath = folderPath,
+                    audioCount = audios.size
+                )
+            )
         }
+
+        return folderList
     }
+    @SuppressLint("Range")
+//    fun getAudioFoldersFromList(audioList: List<AudiosModel>): List<AudioFolderModel> {
+//
+//        val folderMap = HashMap<String, MutableList<AudiosModel>>()
+//
+//        for (audio in audioList) {
+//            val file = File(audio.path)
+//            val parent = file.parentFile ?: continue
+//            val folderName = parent.name
+//
+//            folderMap.getOrPut(folderName) { mutableListOf() }.add(audio)
+//        }
+//
+//        return folderMap.map { (folderName, list) ->
+//            AudioFolderModel(folderName, list)
+//        }
+//    }
 
 
     // this function will be called when the fragment is created when to check the permissions

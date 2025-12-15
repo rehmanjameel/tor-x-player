@@ -27,5 +27,11 @@ class AudiosModel(
     @ColumnInfo(name = "album_id")
     val albumId: Long,
     @ColumnInfo(name = "is_private")
-    val isPrivate: Boolean = false
+    var isPrivate: Boolean = false,
+
+    @ColumnInfo(name = "is_playlist")
+    var isPlaylist: Boolean = false,
+
+    @ColumnInfo(name = "is_history")
+    var isHistory: Boolean = false,
 )

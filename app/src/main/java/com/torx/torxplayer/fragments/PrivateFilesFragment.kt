@@ -277,9 +277,16 @@ class PrivateFilesFragment : Fragment() {
 
     private fun enterSelectionMode(position: Int) {
 
-        videoAdapter.isSelectionMode = true
-        videoAdapter.selectedItems.add(position)
-        videoAdapter.notifyDataSetChanged()
+        if (isVideoPrivate) {
+
+            videoAdapter.isSelectionMode = true
+            videoAdapter.selectedItems.add(position)
+            videoAdapter.notifyDataSetChanged()
+        } else {
+            audioAdapter.isSelectionMode = true
+            audioAdapter.selectedItems.add(position)
+            audioAdapter.notifyDataSetChanged()
+        }
         binding.bottomActionBar.visibility = View.VISIBLE
         binding.selectAllCheckbox.visibility = View.VISIBLE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -288,26 +295,47 @@ class PrivateFilesFragment : Fragment() {
     }
 
     private fun exitSelectionMode() {
-        videoAdapter.isSelectionMode = false
-        videoAdapter.selectedItems.clear()
-        videoAdapter.notifyDataSetChanged()
+        if (isVideoPrivate) {
+            videoAdapter.isSelectionMode = false
+            videoAdapter.selectedItems.clear()
+            videoAdapter.notifyDataSetChanged()
 
-        binding.selectAllCheckbox.visibility = View.GONE
-        binding.bottomActionBar.visibility = View.GONE
-        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
-            View.VISIBLE
+            binding.selectAllCheckbox.visibility = View.GONE
+            binding.bottomActionBar.visibility = View.GONE
+            requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+                View.VISIBLE
+        } else {
+            audioAdapter.isSelectionMode = false
+            audioAdapter.selectedItems.clear()
+            audioAdapter.notifyDataSetChanged()
+            binding.selectAllCheckbox.visibility = View.GONE
+            binding.bottomActionBar.visibility = View.GONE
+            requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
+                View.VISIBLE
+        }
 
     }
 
     private fun toggleSelectAll() {
 
+        if (isVideoPrivate) {
 
-        if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
-            exitSelectionMode()
+            if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
+                exitSelectionMode()
+            } else {
+                videoAdapter.selectedItems.clear()
+                videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
+                videoAdapter.notifyDataSetChanged()
+            }
         } else {
-            videoAdapter.selectedItems.clear()
-            videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
-            videoAdapter.notifyDataSetChanged()
+            if (audioAdapter.selectedItems.size == audioAdapter.itemCount) {
+                exitSelectionMode()
+            } else {
+                audioAdapter.selectedItems.clear()
+                audioAdapter.selectedItems.addAll(audioAdapter.currentList.indices)
+
+                audioAdapter.notifyDataSetChanged()
+            }
         }
 
     }
@@ -328,17 +356,28 @@ class PrivateFilesFragment : Fragment() {
         binding.actionPrivate.setOnClickListener {
             Log.e("is private", "selectedVideos.toString()")
 
-            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+            if (isVideoPrivate) {
 
-            for (video in selectedVideos) {
-                addFilesToPrivate(video.id, false, videoAdapter)
+                val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
 
-                // Update local cache
-                videoList.find { it.id == video.id }?.isPrivate = false
+                for (video in selectedVideos) {
+                    addFilesToPrivate(video.id, false, videoAdapter)
+
+                    // Update local cache
+                    videoList.find { it.id == video.id }?.isPrivate = false
+                }
+            } else {
+                val selectedAudios = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
+
+                for (audio in selectedAudios) {
+                    addAudioFilesToPublic(audio.id, false, audioAdapter)
+
+                    // Update local cache
+                    audioList.find { it.id == audio.id }?.isPrivate = false
+                }
             }
 
             exitSelectionMode()
-
 
         }
 
@@ -349,7 +388,19 @@ class PrivateFilesFragment : Fragment() {
         Log.e("is private1", isPrivate.toString())
 
         videosAdapter.notifyDataSetChanged()
-        Toast.makeText(requireContext(), "Added to private", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Removed from private", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun addAudioFilesToPublic(
+        audioId: Long,
+        isPrivate: Boolean,
+        audioAdapter: AudioAdapter
+    ) {
+        viewModel.updateAudioIsPrivate(audioId, isPrivate)
+        Log.e("is private1", isPrivate.toString())
+
+        audioAdapter.notifyDataSetChanged()
+        Toast.makeText(requireContext(), "Removed from private", Toast.LENGTH_SHORT).show()
     }
 
     private fun setupBackPress() {
@@ -475,10 +526,11 @@ class PrivateFilesFragment : Fragment() {
 
                         override fun onLongItemClick(position: Int) {
 
+                            enterSelectionMode(position)
                         }
 
                         override fun onSelectionChanged(count: Int) {
-
+                            binding.selectAllCheckbox.isChecked = count == audioAdapter.itemCount
                         }
                     })
                 binding.privateFilesRV.apply {

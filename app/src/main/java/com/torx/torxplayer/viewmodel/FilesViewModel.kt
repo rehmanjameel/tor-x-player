@@ -26,6 +26,8 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
     val allAudios: LiveData<MutableList<AudiosModel>>
     val allPublicAudios: LiveData<MutableList<AudiosModel>>
     val allPrivateAudios: LiveData<MutableList<AudiosModel>>
+    val allPlaylistAudios: LiveData<MutableList<AudiosModel>>
+    val allHistoryAudios: LiveData<MutableList<AudiosModel>>
     val filesDao = AppDatabase.getDatabase(application).fileDao()
     var allUrisLive: LiveData<List<String>>
 
@@ -40,6 +42,8 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
         
         allPublicAudios = repository.allPublicAudios
         allPrivateAudios = repository.allPrivateAudios
+        allPlaylistAudios = repository.allPlaylistAudios
+        allHistoryAudios = repository.allHistoryAudios
 
         allUrisLive = repository.allUrisLive
     }
@@ -115,5 +119,18 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearAllAudios() = viewModelScope.launch(Dispatchers.IO) {
         repository.clearAllAudios()
+    }
+
+    //new update
+    fun updateAudioIsPlaylist(audioId: Long, isPlaylist: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateAudioIsPlaylist(audioId, isPlaylist)
+    }
+
+    fun updateAudioIsHistory(audioId: Long, isHistory: Boolean) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateAudioIsHistory(audioId, isHistory)
+    }
+
+    fun clearAllAudioHistory() = viewModelScope.launch(Dispatchers.IO) {
+        repository.clearAllAudioHistory()
     }
 }

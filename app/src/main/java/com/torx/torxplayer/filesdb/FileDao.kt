@@ -109,4 +109,19 @@ interface FileDao {
     @Query("DELETE FROM audio")
     suspend fun clearAllAudios()
 
+    // new updates
+    @Query("Update audio SET is_playlist = :isPlaylist WHERE id = :audioId")
+    suspend fun updateAudioIsPlaylist(audioId: Long, isPlaylist: Boolean)
+
+    @Query("Update audio SET is_history = :isHistory WHERE id = :audioId")
+    suspend fun updateAudioIsHistory(audioId: Long, isHistory: Boolean)
+
+    @Query("UPDATE audio SET is_history = 0 WHERE is_history = 1")
+    suspend fun clearAllAudioHistory()
+
+    @Query("SELECT * FROM audio WHERE is_playlist = 1  Order by id DESC")
+    fun getPlaylistAudio(): LiveData<MutableList<AudiosModel>>
+
+    @Query("SELECT * FROM audio WHERE is_history = 1  Order by id DESC")
+    fun getHistoryAudio(): LiveData<MutableList<AudiosModel>>
 }
