@@ -48,6 +48,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.w3c.dom.Text
+import java.io.File
 import kotlin.math.abs
 
 class VideoPlayerFragment : Fragment() {
@@ -288,7 +289,16 @@ class VideoPlayerFragment : Fragment() {
 
         exoPlayer?.apply {
 //            binding.player.scaleX = -1f
-            setMediaItem(MediaItem.fromUri(args.videoUri.toUri()))
+            val mediaItem = if (args.isPublic) {
+                // Public video → MediaStore / content uri
+                MediaItem.fromUri(args.videoUri.toUri())
+            } else {
+                // Private video → internal storage file path
+                val file = File(args.videoPrivate)
+                MediaItem.fromUri(Uri.fromFile(file))
+            }
+
+            setMediaItem(mediaItem)
 //            setMediaSource(buildMediaSource(getPath))
             seekTo(playbackPosition)
             playWhenReady = playWhenReady

@@ -77,6 +77,9 @@ class AudiosFragment : Fragment() {
     private var isPlaylistView = false
     private var isFolder = false
 
+    private val pendingDeleteUris = mutableListOf<Uri>()
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -87,24 +90,7 @@ class AudiosFragment : Fragment() {
         setupRecyclerView()
 
         // Register the launcher for delete request
-        deleteRequestLauncher =
-            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    lastDeletedUri.let { deletedUri ->
-                        viewModel.deleteAudiosByUri(deletedUri.toString()) // also remove from DB
-                        audioList.removeAll { it.uri == deletedUri.toString() }
-                        audioAdapter.notifyDataSetChanged()
-                    }
-                    Toast.makeText(
-                        requireContext(),
-                        "File deleted successfully",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    // You can refresh your list or remove the item here if not already done
-                } else {
-                    Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
-                }
-            }
+        setupDeleteLauncher()
 
         binding.donation.setOnClickListener {
             val url =
@@ -221,6 +207,7 @@ class AudiosFragment : Fragment() {
         observeHistoryAudios()
         setupBottomActions()
         setupFolderAdapter()
+        setupBackPress()
 
         binding.swapIcon.setOnClickListener {
             isAscending = !isAscending
@@ -406,6 +393,7 @@ class AudiosFragment : Fragment() {
                 isPlaylistView = false
                 isFolder = false
                 observeAudios()
+                setupBottomActions()
             }
 
             binding.tabFolder -> {
@@ -416,6 +404,7 @@ class AudiosFragment : Fragment() {
                 isPlaylistView = false
                 isFolder = true
                 binding.emptyView.visibility = View.GONE
+                setupBottomActions()
             }
 
             binding.tabPlaylist -> {
@@ -502,7 +491,7 @@ class AudiosFragment : Fragment() {
                 exitSelectionMode()
                 refreshVisibleList()
             } else {
-                requireActivity().finish()
+                findNavController().popBackStack()
             }
         }
     }
@@ -519,6 +508,12 @@ class AudiosFragment : Fragment() {
             binding.actionShare.visibility = View.GONE
             binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_remove_24)
             binding.playListTxt.text = "Remove List"
+        } else{
+            binding.actionDelete.visibility = View.VISIBLE
+            binding.actionPrivate.visibility = View.VISIBLE
+            binding.actionShare.visibility = View.VISIBLE
+            binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_play_24)
+            binding.playListTxt.text = "Add To"
         }
 
         binding.actionPrivate.setOnClickListener {
@@ -643,16 +638,84 @@ class AudiosFragment : Fragment() {
     }
 
     private fun deleteSelectedAudios() {
-        if (!isPlaylistView) {
-            val selectedAudios = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
+        val selectedVideos = audioAdapter.selectedItems
+            .map { audioAdapter.currentList[it] }
 
-            for (audio in selectedAudios) {
-                deleteFileFromStorage(audio)
+        if (selectedVideos.isEmpty()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+
+            pendingDeleteUris.clear()
+            pendingDeleteUris.addAll(
+                selectedVideos.map { it.uri.toUri() }
+            )
+
+            val pendingIntent = MediaStore.createDeleteRequest(
+                requireContext().contentResolver,
+                pendingDeleteUris
+            )
+
+            val request = IntentSenderRequest.Builder(
+                pendingIntent.intentSender
+            ).build()
+
+            deleteRequestLauncher.launch(request)
+
+        } else {
+            // Pre-Android 11
+            selectedVideos.forEach { video ->
+                deletePreAndroid11(video)
             }
-            exitSelectionMode()
             refreshVisibleList()
         }
 
+        exitSelectionMode()
+
+    }
+
+    private fun setupDeleteLauncher() {
+        deleteRequestLauncher =
+            registerForActivityResult(
+                ActivityResultContracts.StartIntentSenderForResult()
+            ) { result ->
+
+                if (result.resultCode == Activity.RESULT_OK) {
+
+                    pendingDeleteUris.forEach { uri ->
+                        viewModel.deleteAudiosByUri(uri.toString())
+                        audioList.removeAll { it.uri == uri.toString() }
+                    }
+
+                    pendingDeleteUris.clear()
+                    refreshVisibleList()
+
+                    Toast.makeText(
+                        requireContext(),
+                        "Audios deleted successfully",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        "Delete cancelled",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+    }
+
+    private fun deletePreAndroid11(audio: AudiosModel) {
+        val rowsDeleted = requireContext().contentResolver.delete(
+            audio.uri.toUri(),
+            null,
+            null
+        )
+
+        if (rowsDeleted > 0) {
+            viewModel.deleteVideosByUri(audio.uri)
+            audioList.remove(audio)
+        }
     }
 
     private fun playSelectedAudios() {
@@ -661,14 +724,14 @@ class AudiosFragment : Fragment() {
                 val positions = audioAdapter.selectedItems.toList()  // ensure fixed order
                 val source = audioAdapter.currentList
 
-                val firstAudio = source[positions.first()]
-                val uris = positions.map { source[it].uri }.toTypedArray()
-                val titles = positions.map { source[it].title }.toTypedArray()
-
-                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                    firstAudio.uri, titles, true, uris, 0
-                )
-                findNavController().navigate(action)
+//                val firstAudio = source[positions.first()]
+//                val uris = positions.map { source[it].uri }.toTypedArray()
+//                val titles = positions.map { source[it].title }.toTypedArray()
+//
+//                val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
+//                    firstAudio.uri, titles, true, uris, 0
+//                )
+//                findNavController().navigate(action)
 
                 // FIXED – no more crash
                 for (pos in positions) {
@@ -678,6 +741,7 @@ class AudiosFragment : Fragment() {
                     viewModel.updateAudioIsPlaylist(audioId, true)
                 }
 
+                exitSelectionMode()
             }
         } else {
             if (playlistAudioAdapter.selectedItems.isNotEmpty()) {
@@ -691,8 +755,9 @@ class AudiosFragment : Fragment() {
                     viewModel.updateAudioIsPlaylist(audioId, false)
                 }
 
+                highlightTab(binding.tabAudios)
+                exitSelectionMode()
             }
-            exitSelectionMode()
 
         }
     }

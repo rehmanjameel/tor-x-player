@@ -1,8 +1,14 @@
 package com.torx.torxplayer.fragments
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
+import android.os.IBinder
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,106 +21,113 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentAudioPlayerBinding
+import com.torx.torxplayer.services.AudioPlayerService
 import kotlinx.coroutines.*
 
+@UnstableApi
 class AudioPlayerFragment : Fragment() {
 
     private lateinit var binding: FragmentAudioPlayerBinding
     private val args: AudioPlayerFragmentArgs by navArgs()
 
-    private var player: ExoPlayer? = null
     private var audioList: List<Uri> = emptyList()
     private var audioTitleList: List<String> = emptyList()
     private var currentIndex = 0
+
     private var seekJob: Job? = null
-    private var currentSpeedIndex = 2 // default = 1x
+    private var currentSpeedIndex = 2
     private val speedOptions = floatArrayOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
 
+    private var audioService: AudioPlayerService? = null
+    private var isBound = false
+
+    private val serviceConnection = object : ServiceConnection {
+
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as AudioPlayerService.LocalBinder
+            audioService = binder.getService()
+            isBound = true
+
+            // Start playback ONLY ONCE
+            audioService?.playPlaylist(
+                audioList.map { it.toString() },
+                audioTitleList,
+                currentIndex
+            )
+
+            observePlayer()
+            startSeekbarUpdater()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound = false
+            audioService = null
+        }
+    }
+
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         binding = FragmentAudioPlayerBinding.inflate(inflater, container, false)
+
         audioTitleList = args.audioTitle.toList()
         audioList = args.audioUriList.map { it.toUri() }
         currentIndex = args.position
 
-        initializePlayer()
         setupUiListeners()
         setupBackPress()
+        startAudioService()
+
+        updateTitle()
+        loadAlbumArt(audioList[currentIndex])
+
         return binding.root
     }
 
-    private fun initializePlayer() {
-        player = ExoPlayer.Builder(requireContext()).build()
+    private fun startAudioService() {
+        val intent = Intent(requireContext(), AudioPlayerService::class.java)
+        requireContext().startForegroundService(intent)
 
-        player?.addListener(object : Player.Listener {
+        requireContext().bindService(
+            intent,
+            serviceConnection,
+            Context.BIND_AUTO_CREATE
+        )
+    }
+
+    // 🔁 Observe service player for UI + animation
+    private fun observePlayer() {
+        audioService?.player?.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                binding.btnPlayPause.setImageResource(
+                    if (isPlaying)
+                        R.drawable.baseline_pause_circle_filled_24
+                    else
+                        R.drawable.baseline_play_arrow_24
+                )
+
+                if (isPlaying) binding.heartbeatAnim.playAnimation()
+                else binding.heartbeatAnim.pauseAnimation()
+            }
+
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED) nextTrack()
             }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                lifecycleScope.launch(Dispatchers.Main) {
-                    binding.btnPlayPause.setImageResource(
-                        if (isPlaying) R.drawable.baseline_pause_circle_filled_24
-                        else R.drawable.baseline_play_arrow_24
-                    )
-                    if (isPlaying) binding.heartbeatAnim.playAnimation()
-                    else binding.heartbeatAnim.pauseAnimation()
-                }
-            }
         })
-
-        lifecycleScope.launch(Dispatchers.Main) {
-            playAudio(currentIndex)
-            startSeekbarUpdater()
-        }
-    }
-
-    private suspend fun loadAlbumArt(uri: Uri?) = withContext(Dispatchers.IO) {
-        uri ?: return@withContext null
-        try {
-            requireContext().contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    private suspend fun playAudio(index: Int) = withContext(Dispatchers.Main) {
-        val uri = audioList[index]
-        val audioTitle = audioTitleList.getOrNull(index) ?: "Untitled"
-
-        // Load album art in background
-        val bitmap = withContext(Dispatchers.IO) { loadAlbumArt(uri) }
-        bitmap?.let {
-            binding.albumArt.setImageBitmap(it)
-        } ?: run {
-            binding.albumArt.setImageResource(R.drawable.audio_thumbnail)
-        }
-
-        val item = MediaItem.fromUri(uri)
-        player?.apply {
-            stop()
-            clearMediaItems()
-            setMediaItem(item)
-            prepare()
-            playWhenReady = true
-            setPlaybackSpeed(speedOptions[currentSpeedIndex])
-        }
-
-        binding.tvTitle.text = audioTitle
     }
 
     private fun setupUiListeners() {
+
         binding.btnPlayPause.setOnClickListener {
-            player?.let { p ->
+            audioService?.player?.let { p ->
                 if (p.isPlaying) p.pause() else p.play()
             }
         }
@@ -122,24 +135,29 @@ class AudioPlayerFragment : Fragment() {
         binding.btnNext.setOnClickListener { nextTrack() }
         binding.btnPrev.setOnClickListener { previousTrack() }
 
-        // Speed control TextView
         binding.tvSpeed.apply {
             visibility = View.VISIBLE
             text = "${speedOptions[currentSpeedIndex]}x"
             setOnClickListener {
                 currentSpeedIndex = (currentSpeedIndex + 1) % speedOptions.size
-                val newSpeed = speedOptions[currentSpeedIndex]
-                player?.setPlaybackSpeed(newSpeed)
-                text = "${newSpeed}x"
-                Toast.makeText(requireContext(), "Speed: ${newSpeed}x", Toast.LENGTH_SHORT).show()
+                val speed = speedOptions[currentSpeedIndex]
+                audioService?.player?.playbackParameters =
+                    PlaybackParameters(speed)
+                text = "${speed}x"
             }
         }
 
-        // SeekBar interaction
-        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) player?.seekTo(progress.toLong())
-                binding.tvCurrentTime.text = formatTime(progress.toLong())
+        binding.seekBar.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+
+            override fun onProgressChanged(
+                seekBar: SeekBar?,
+                progress: Int,
+                fromUser: Boolean
+            ) {
+                if (fromUser) {
+                    audioService?.player?.seekTo(progress.toLong())
+                }
             }
 
             override fun onStartTrackingTouch(sb: SeekBar?) {}
@@ -151,11 +169,11 @@ class AudioPlayerFragment : Fragment() {
 
     private fun startSeekbarUpdater() {
         seekJob?.cancel()
-        seekJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main.immediate) {
+        seekJob = viewLifecycleOwner.lifecycleScope.launch {
             while (isActive) {
-                player?.let { p ->
+                audioService?.player?.let { p ->
+                    val pos = p.currentPosition
                     val dur = p.duration.takeIf { it > 0 } ?: 0
-                    val pos = p.currentPosition.takeIf { it >= 0 } ?: 0
                     binding.seekBar.max = dur.toInt()
                     binding.seekBar.progress = pos.toInt()
                     binding.tvCurrentTime.text = formatTime(pos)
@@ -166,24 +184,62 @@ class AudioPlayerFragment : Fragment() {
         }
     }
 
-    private fun stopSeekbarUpdater() {
-        seekJob?.cancel()
-        seekJob = null
-    }
-
     private fun nextTrack() {
         if (currentIndex < audioList.size - 1) {
             currentIndex++
-            lifecycleScope.launch { playAudio(currentIndex) }
+            audioService?.playPlaylist(
+                audioList.map { it.toString() },
+                audioTitleList,
+                currentIndex
+            )
+            updateTitle()
+            loadAlbumArt(audioList[currentIndex])
         }
     }
 
     private fun previousTrack() {
         if (currentIndex > 0) {
             currentIndex--
-            lifecycleScope.launch { playAudio(currentIndex) }
+            audioService?.playPlaylist(
+                audioList.map { it.toString() },
+                audioTitleList,
+                currentIndex
+            )
+            updateTitle()
+            loadAlbumArt(audioList[currentIndex])
         }
     }
+
+    private fun updateTitle() {
+        binding.tvTitle.text =
+            audioTitleList.getOrNull(currentIndex) ?: "Untitled"
+    }
+
+    private fun loadAlbumArt(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+
+            val bitmap = try {
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(requireContext(), uri)
+
+                val art = retriever.embeddedPicture
+                retriever.release()
+
+                art?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            } catch (e: Exception) {
+                null
+            }
+
+            withContext(Dispatchers.Main) {
+                if (bitmap != null) {
+                    binding.albumArt.setImageBitmap(bitmap)
+                } else {
+                    binding.albumArt.setImageResource(R.drawable.audio_thumbnail)
+                }
+            }
+        }
+    }
+
 
     private fun setupBackPress() {
         requireActivity().onBackPressedDispatcher.addCallback(
@@ -196,34 +252,29 @@ class AudioPlayerFragment : Fragment() {
 
     private fun navigateBack() {
         stopSeekbarUpdater()
-        player?.stop()
-        player?.release()
-        player = null
         if (args.isPublic) findNavController().navigateUp()
-        else findNavController().navigate(R.id.action_audioPlayerFragment_to_privateFilesFragment)
+        else findNavController().navigate(
+            R.id.action_audioPlayerFragment_to_privateFilesFragment
+        )
     }
 
-    override fun onStop() {
-        super.onStop()
-        player?.pause()
-        stopSeekbarUpdater()
+    private fun stopSeekbarUpdater() {
+        seekJob?.cancel()
+        seekJob = null
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         stopSeekbarUpdater()
-        player?.release()
-        player = null
-    }
-
-    private fun ExoPlayer.setPlaybackSpeed(speed: Float) {
-        this.playbackParameters = PlaybackParameters(speed)
+        if (isBound) {
+            requireContext().unbindService(serviceConnection)
+            isBound = false
+        }
     }
 
     private fun formatTime(ms: Long): String {
         val totalSeconds = ms / 1000
-        val minutes = totalSeconds / 60
-        val seconds = totalSeconds % 60
-        return String.format("%02d:%02d", minutes, seconds)
+        return String.format("%02d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 }
+

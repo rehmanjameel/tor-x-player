@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.model.VideosModel
 
-@Database(entities = [VideosModel::class, AudiosModel::class], version = 1, exportSchema = false)
+@Database(entities = [VideosModel::class, AudiosModel::class], version = 5, exportSchema = false)
 abstract class AppDatabase: RoomDatabase() {
 
     // create abstract fun for each dao
@@ -28,7 +28,8 @@ abstract class AppDatabase: RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "media_database"
-                ).build()
+                ).fallbackToDestructiveMigration(false)
+                    .build()
                 // return the instance
                 INSTANCE = instance
                 instance

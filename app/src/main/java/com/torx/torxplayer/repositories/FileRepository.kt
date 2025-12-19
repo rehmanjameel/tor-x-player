@@ -49,8 +49,12 @@ class FileRepository(private val fileDao: FileDao) {
         fileDao.clearAll()
     }
 
-    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean) {
-        fileDao.updateVideoIsPrivate(videoId, isPrivate)
+    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?, newContentUri: String?) {
+        fileDao.updateVideoIsPrivate(videoId, isPrivate, privatePath, newContentUri)
+    }
+
+    suspend fun updateVideoAfterUnlock(videoId: Long, newContentUri: String, newPath: String) {
+        fileDao.updateVideoAfterUnlock(videoId, newContentUri, newPath)
     }
 
     suspend fun updateVideoIsPlaylist(videoId: Long, isPlaylist: Boolean) {

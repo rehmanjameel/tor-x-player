@@ -8,14 +8,13 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "video")
 class VideosModel (
-    @PrimaryKey(autoGenerate = true)
+    @PrimaryKey
+    @ColumnInfo(name = "id")
     val id: Long,
     @ColumnInfo(name = "title")
     val title: String,
     @ColumnInfo(name = "content_uri")
     val contentUri: String,
-//    @ColumnInfo(name = "thumbnail")
-//    val thumbnail: Bitmap? = null,
     @ColumnInfo(name = "date_added")
     val dateAdded: Long,
     @ColumnInfo(name = "mime_type")
@@ -30,6 +29,8 @@ class VideosModel (
     val path: String,
     @ColumnInfo(name = "is_private")
     var isPrivate: Boolean = false,
+    @ColumnInfo(name = "private_path")
+    var privatePath: String? = null,
 
     @ColumnInfo(name = "is_playlist")
     var isPlaylist: Boolean = false,

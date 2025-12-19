@@ -39,9 +39,15 @@ interface FileDao {
     @Query("DELETE FROM video WHERE content_uri = :uri")
     suspend fun deleteByUri(uri: String)
 
-    @Query("Update video SET is_private = :isPrivate WHERE id = :videoId")
-    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean)
+    @Query("Update video SET is_private = :isPrivate, private_path = :privatePath, content_uri = :newContentUri WHERE id = :videoId")
+    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?, newContentUri: String?)
 
+    @Query("UPDATE video SET is_private = 0, content_uri = :newContentUri, path = :newPath WHERE id = :videoId")
+    suspend fun updateVideoAfterUnlock(
+        videoId: Long,
+        newContentUri: String,
+        newPath: String
+    )
     @Query("Update video SET is_playlist = :isPlaylist WHERE id = :videoId")
     suspend fun updateVideoIsPlaylist(videoId: Long, isPlaylist: Boolean)
 

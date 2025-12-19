@@ -1,17 +1,17 @@
 package com.torx.torxplayer.fragments
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ArrayAdapter
 import androidx.activity.OnBackPressedCallback
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentDownloadBinding
@@ -22,87 +22,70 @@ import java.net.URLEncoder
 class DownloadFragment : Fragment() {
 
     private lateinit var binding: FragmentDownloadBinding
+
+    private var isSearchMode = false
     private var isWebView = false
 
+    private lateinit var suggestionsAdapter: ArrayAdapter<String>
+    private val suggestions = mutableListOf<String>()
+
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
+    ): View {
+
         binding = FragmentDownloadBinding.inflate(inflater, container, false)
 
-        // Configure WebView settings (optional)
-        binding.mediaWV.settings.javaScriptEnabled = true // Enable JavaScript
-        binding.mediaWV.settings.domStorageEnabled = true // Enable DOM storage
+        setupWebView()
+        setupSearch()
+        setupClicks()
+        setupBackPress()
 
-        // Set a WebViewClient to handle page navigation within the app
+        return binding.root
+    }
+
+    // -------------------- WEBVIEW --------------------
+
+    private fun setupWebView() {
+        binding.mediaWV.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+        }
+
         binding.mediaWV.webViewClient = object : WebViewClient() {
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 binding.progressBar.visibility = View.VISIBLE
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
-                // Hide overlay only after new page is fully drawn
-                binding.webviewOverlay.visibility = View.GONE
                 binding.progressBar.visibility = View.GONE
+                binding.webviewOverlay.visibility = View.GONE
             }
         }
+    }
 
-        // Load a URL
+    // -------------------- SEARCH --------------------
 
-        binding.fbLayout.setOnClickListener {
-            loadCleanUrl("https://snapsave.app/")
-        }
+    private fun setupSearch() {
 
-        binding.ytLayout.setOnClickListener {
-            loadCleanUrl(" https://turboscribe.ai/downloader/youtube/video")
-        }
+        suggestionsAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            suggestions
+        )
+        binding.searchTIET.setAdapter(suggestionsAdapter)
+        binding.searchTIET.threshold = 1
 
-        binding.instaLayout.setOnClickListener {
-            loadCleanUrl("https://fastdl.app/en2")
-        }
-
-        binding.tiktokLayout.setOnClickListener {
-            loadCleanUrl("https://ssstik.io/en-1")
-        }
-
-        // Create an OnBackPressedCallback
-        val callback = object : OnBackPressedCallback(true) { // 'true' means it's initially enabled
-            override fun handleOnBackPressed() {
-                // Implement your custom back press logic here
-                // For example, show a dialog, navigate to a specific screen, etc.
-                if (isWebView) {
-                    // Perform custom action
-                    binding.mediaWV.visibility = View.GONE
-                    isWebView = false
-
-                } else {
-                    // If you don't handle it, you can disable the callback
-                    // to let the dispatcher find the next enabled callback
-                    // or fall back to default system behavior.
-                    isEnabled = false
-                    requireActivity().onBackPressedDispatcher.onBackPressed() // Call the dispatcher to continue the back press flow
-                }
-            }
-        }
-
-        // Add the callback to the dispatcher, associating it with the lifecycle owner
-        requireActivity().onBackPressedDispatcher.addCallback(this, callback)
-
-        binding.backArrow.setOnClickListener {
-            findNavController().navigateUp()
-        }
-
-        binding.searchTIET.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
+        binding.searchTIET.setOnClickListener {
+            if (!isSearchMode) {
                 enterSearchMode()
-            } else {
-                exitSearchMode()
             }
         }
 
         binding.searchTIET.setOnItemClickListener { _, _, position, _ ->
-            val query = binding.searchTIET.adapter.getItem(position) as String
+            val query = suggestionsAdapter.getItem(position) ?: return@setOnItemClickListener
             openSearch(query)
         }
 
@@ -110,31 +93,6 @@ class DownloadFragment : Fragment() {
             openSearch(binding.searchTIET.text.toString())
             true
         }
-
-        setupSearchSuggestions()
-
-        return binding.root
-    }
-
-    private fun loadCleanUrl(url: String) {
-        // Show overlay BEFORE loading
-        binding.webviewOverlay.visibility = View.VISIBLE
-
-        isWebView = true
-        binding.mediaWV.visibility = View.VISIBLE
-
-        // Now load the new link
-        binding.mediaWV.loadUrl(url)
-    }
-
-    private fun setupSearchSuggestions() {
-        val suggestions = mutableListOf<String>()
-        val adapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            suggestions
-        )
-        binding.searchTIET.setAdapter(adapter)
 
         binding.searchTIET.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {}
@@ -148,15 +106,127 @@ class DownloadFragment : Fragment() {
                 fetchGoogleSuggestions(query) { result ->
                     suggestions.clear()
                     suggestions.addAll(result)
-                    adapter.notifyDataSetChanged()
-                    binding.searchTIET.showDropDown()
+                    suggestionsAdapter.notifyDataSetChanged()
+
+                    if (isSearchMode && binding.searchTIET.hasFocus()) {
+                        binding.searchTIET.post {
+                            binding.searchTIET.showDropDown()
+                        }
+                    }
                 }
             }
         })
-
     }
 
-    private fun fetchGoogleSuggestions(query: String, callback: (List<String>) -> Unit) {
+    // -------------------- SEARCH MODE --------------------
+
+    private fun enterSearchMode() {
+        isSearchMode = true
+
+        binding.downloadLinksLayout.visibility = View.GONE
+        binding.mediaWV.visibility = View.GONE
+
+        // ❗ IMPORTANT: overlay must be GONE for suggestions
+        binding.webviewOverlay.visibility = View.GONE
+        binding.searchTV.visibility = View.VISIBLE
+
+        binding.searchTIET.requestFocus()
+        showKeyboard()
+    }
+
+    private fun exitSearchMode() {
+        isSearchMode = false
+
+        binding.downloadLinksLayout.visibility = View.VISIBLE
+        binding.searchTV.visibility = View.GONE
+
+        binding.searchTIET.clearFocus()
+        binding.searchTIET.dismissDropDown()
+        hideKeyboard()
+    }
+
+    // -------------------- SEARCH ACTION --------------------
+
+    private fun openSearch(query: String) {
+        if (query.isBlank()) return
+
+        val url =
+            if (query.startsWith("http"))
+                query
+            else
+                "https://www.google.com/search?q=${URLEncoder.encode(query, "UTF-8")}"
+
+        isWebView = true
+        binding.mediaWV.visibility = View.VISIBLE
+        binding.webviewOverlay.visibility = View.VISIBLE
+
+        binding.mediaWV.loadUrl(url)
+        exitSearchMode()
+    }
+
+    // -------------------- BUTTONS --------------------
+
+    private fun setupClicks() {
+
+        binding.backArrow.setOnClickListener {
+            findNavController().navigateUp()
+        }
+
+        binding.fbLayout.setOnClickListener {
+            loadCleanUrl("https://snapsave.app/")
+        }
+
+        binding.ytLayout.setOnClickListener {
+            loadCleanUrl("https://turboscribe.ai/downloader/youtube/video")
+        }
+
+        binding.instaLayout.setOnClickListener {
+            loadCleanUrl("https://fastdl.app/en2")
+        }
+
+        binding.tiktokLayout.setOnClickListener {
+            loadCleanUrl("https://ssstik.io/en-1")
+        }
+    }
+
+    private fun loadCleanUrl(url: String) {
+        isWebView = true
+        binding.mediaWV.visibility = View.VISIBLE
+        binding.webviewOverlay.visibility = View.VISIBLE
+        binding.mediaWV.loadUrl(url)
+    }
+
+    // -------------------- BACK PRESS --------------------
+
+    private fun setupBackPress() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    when {
+                        isSearchMode -> exitSearchMode()
+                        isWebView -> {
+                            binding.mediaWV.visibility = View.GONE
+                            isWebView = false
+                        }
+                        else -> {
+                            isEnabled = false
+                            requireActivity()
+                                .onBackPressedDispatcher
+                                .onBackPressed()
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    // -------------------- GOOGLE SUGGESTIONS --------------------
+
+    private fun fetchGoogleSuggestions(
+        query: String,
+        callback: (List<String>) -> Unit
+    ) {
         Thread {
             try {
                 val url =
@@ -178,33 +248,19 @@ class DownloadFragment : Fragment() {
         }.start()
     }
 
-    private fun enterSearchMode() {
-        binding.downloadLinksLayout.visibility = View.GONE
-//        binding.ytLayout.visibility = View.GONE
-//        binding.instaLayout.visibility = View.GONE
-//        binding.tiktokLayout.visibility = View.GONE
-        binding.mediaWV.visibility = View.GONE
+    // -------------------- KEYBOARD --------------------
 
-        binding.webviewOverlay.visibility = View.VISIBLE
+    private fun showKeyboard() {
+        val imm =
+            requireContext().getSystemService(Context.INPUT_METHOD_SERVICE)
+                    as InputMethodManager
+        imm.showSoftInput(binding.searchTIET, InputMethodManager.SHOW_IMPLICIT)
     }
 
-    private fun exitSearchMode() {
-        binding.downloadLinksLayout.visibility = View.VISIBLE
-//        binding.ytLayout.visibility = View.VISIBLE
-//        binding.instaLayout.visibility = View.VISIBLE
-//        binding.tiktokLayout.visibility = View.VISIBLE
-
-        binding.webviewOverlay.visibility = View.GONE
+    private fun hideKeyboard() {
+        val imm =
+            requireContext().getSystemService(Context.INPUT_METHOD_SERVICE)
+                    as InputMethodManager
+        imm.hideSoftInputFromWindow(binding.searchTIET.windowToken, 0)
     }
-
-    private fun openSearch(query: String) {
-        val url =
-            if (query.startsWith("http")) query
-            else "https://www.google.com/search?q=${URLEncoder.encode(query, "UTF-8")}"
-
-        binding.mediaWV.visibility = View.VISIBLE
-        binding.mediaWV.loadUrl(url)
-        binding.searchTIET.clearFocus()
-    }
-
 }

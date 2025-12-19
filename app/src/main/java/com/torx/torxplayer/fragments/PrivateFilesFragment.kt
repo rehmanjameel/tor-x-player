@@ -1,8 +1,10 @@
 package com.torx.torxplayer.fragments
 
+import android.content.ContentValues
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -20,6 +22,7 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.arconn.devicedesk.utils.AppGlobals
@@ -32,6 +35,10 @@ import com.torx.torxplayer.databinding.FragmentPrivateFilesBinding
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.model.VideosModel
 import com.torx.torxplayer.viewmodel.FilesViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class PrivateFilesFragment : Fragment() {
 
@@ -243,6 +250,7 @@ class PrivateFilesFragment : Fragment() {
                             val action =
                                 PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
                                     video.contentUri,
+                                    video.privatePath?: "",
                                     videoList.map { it.title }.toTypedArray(),
                                     false,
                                     videoList.map { it.contentUri }.toTypedArray(),
@@ -342,9 +350,6 @@ class PrivateFilesFragment : Fragment() {
 
     private fun setupBottomActions() {
         binding.selectAllCheckbox.setOnClickListener { toggleSelectAll() }
-//        binding.actionDelete.setOnClickListener { deleteSelectedVideos() }
-//        binding.actionPlay.setOnClickListener { playSelectedVideos() }
-//        binding.actionShare.setOnClickListener { shareSelectedVideos() }
 
         binding.actionDelete.visibility = View.GONE
         binding.actionPrivate.visibility = View.VISIBLE
@@ -361,7 +366,9 @@ class PrivateFilesFragment : Fragment() {
                 val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
 
                 for (video in selectedVideos) {
-                    addFilesToPrivate(video.id, false, videoAdapter)
+                    lifecycleScope.launch {
+                        makeVideoPublic(video)
+                    }
 
                     // Update local cache
                     videoList.find { it.id == video.id }?.isPrivate = false
@@ -383,13 +390,65 @@ class PrivateFilesFragment : Fragment() {
 
     }
 
-    private fun addFilesToPrivate(videoId: Long, isPrivate: Boolean, videosAdapter: VideosAdapter) {
-        viewModel.updateVideoIsPrivate(videoId, isPrivate)
+    private fun addFilesToPublic(videoId: Long, isPrivate: Boolean, privatePath: String, videosAdapter: VideosAdapter) {
+//        viewModel.updateVideoIsPrivate(videoId, isPrivate, privatePath)
         Log.e("is private1", isPrivate.toString())
 
         videosAdapter.notifyDataSetChanged()
         Toast.makeText(requireContext(), "Removed from private", Toast.LENGTH_SHORT).show()
     }
+
+    private suspend fun makeVideoPublic(video: VideosModel) =
+        withContext(Dispatchers.IO) {
+
+            try {
+                val resolver = requireContext().contentResolver
+                val privateFile = File(video.privatePath ?: return@withContext)
+
+                if (!privateFile.exists()) return@withContext
+
+                // 1️⃣ Insert into MediaStore
+                val values = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, video.title)
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                    put(
+                        MediaStore.Video.Media.RELATIVE_PATH,
+                        Environment.DIRECTORY_MOVIES + "/${video.folderName}"
+                    )
+                }
+
+                val newUri = resolver.insert(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    values
+                ) ?: throw IllegalStateException("MediaStore insert failed")
+
+                // 2️⃣ Copy data back to public storage
+                resolver.openOutputStream(newUri)?.use { output ->
+                    privateFile.inputStream().use { input ->
+                        input.copyTo(output)
+                    }
+                }
+
+                // 3️⃣ Delete private copy
+                privateFile.delete()
+
+                // 4️⃣ Build correct new PATH
+//                val newPath =
+//                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+//                        .absolutePath + "/${video.folderName}/${privateFile.name}"
+//
+//                // 5️⃣ Update SAME DB ROW (no duplication)
+//                viewModel.updateVideoAfterUnlock(
+//                    videoId = video.id,
+//                    newContentUri = newUri.toString(),
+//                    newPath = newPath
+//                )
+                viewModel.deleteVideosById(video.id)
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
     private fun addAudioFilesToPublic(
         audioId: Long,
@@ -432,7 +491,7 @@ class PrivateFilesFragment : Fragment() {
 //                }
 
                 R.id.addToPrivate -> {
-                    viewModel.updateVideoIsPrivate(video.id, true)
+//                    viewModel.updateVideoIsPrivate(video.id, true)
                     videoList.removeAt(position)
                     videoAdapter.notifyItemRemoved(position)
                     Toast.makeText(requireContext(), "Add to private clicked", Toast.LENGTH_SHORT)
@@ -573,7 +632,7 @@ class PrivateFilesFragment : Fragment() {
                     // in the same way you can implement others
                     R.id.addToPrivate -> {
                         // define
-                        viewModel.updateVideoIsPrivate(audio.id, true)
+//                        viewModel.updateVideoIsPrivate(audio.id, true)
                         audioList.removeAt(position)
                         audioAdapter.notifyItemRemoved(position)
                         Toast.makeText(

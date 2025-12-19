@@ -66,6 +66,10 @@ class VideosFragment : Fragment() {
     private var isAscending = false
     private var isPlaylistView = false
     private var isFolder = false
+    private val pendingDeleteUris = mutableListOf<Uri>()
+    private lateinit var privateDeleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
+    private val pendingPrivateDeletes = mutableListOf<VideosModel>()
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -77,6 +81,7 @@ class VideosFragment : Fragment() {
         setupSearch()
         setupDonationClick()
         setupDeleteLauncher()
+        setupPrivateDeleteLauncher()
 
         //open the download screen
         binding.downloadIcon.setOnClickListener {
@@ -141,6 +146,7 @@ class VideosFragment : Fragment() {
                 val video = videoHistoryList[position]
                 val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                     video.contentUri,
+                    video.privatePath?: "",
                     videoHistoryList.map { it.title }.toTypedArray(),
                     true,
                     videoHistoryList.map { it.contentUri }.toTypedArray(),
@@ -164,6 +170,7 @@ class VideosFragment : Fragment() {
                     val video = videos[position]
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri,
+                        video.privatePath?: "",
                         videos.map { it.title }.toTypedArray(),
                         true,
                         videos.map { it.contentUri }.toTypedArray(),
@@ -208,6 +215,7 @@ class VideosFragment : Fragment() {
                     val video = videos[position]
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri,
+                        video.privatePath?: "",
                         videos.map { it.title }.toTypedArray(),
                         true,
                         videos.map { it.contentUri }.toTypedArray(),
@@ -271,34 +279,36 @@ class VideosFragment : Fragment() {
 
         when (selected) {
             binding.tabVideos -> {
+                isPlaylistView = false
+                isFolder = false
                 binding.lineVideos.visibility = View.VISIBLE
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = true, folder = false, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
-                isPlaylistView = false
-                isFolder = false
                 observeVideos()
+                setupBottomActions()
             }
 
             binding.tabFolder -> {
+                isPlaylistView = false
+                isFolder = true
                 binding.lineFolder.visibility = View.VISIBLE
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = true, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
-                isPlaylistView = false
-                isFolder = true
                 binding.emptyView.visibility = View.GONE
+                setupBottomActions()
             }
 
             binding.tabPlaylist -> {
+                isPlaylistView = true
+                isFolder = false
                 binding.linePlaylist.visibility = View.VISIBLE
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = false, selected = true, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 setupPlaylistVideoAdapter()
                 observePlaylistVideos()
-                isPlaylistView = true
-                isFolder = false
                 setupBottomActions()
             }
         }
@@ -376,6 +386,9 @@ class VideosFragment : Fragment() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (videoAdapter.isSelectionMode) {
                 exitSelectionMode()
+                if (binding.selectAllCheckbox.isChecked) {
+                    binding.selectAllCheckbox.isChecked = false
+                }
                 refreshVisibleList()
             } else {
                 requireActivity().finish()
@@ -463,27 +476,48 @@ class VideosFragment : Fragment() {
 
     private fun setupDeleteLauncher() {
         deleteRequestLauncher =
-            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            registerForActivityResult(
+                ActivityResultContracts.StartIntentSenderForResult()
+            ) { result ->
+
                 if (result.resultCode == Activity.RESULT_OK) {
 
-                    lastDeletedUri?.let { uri ->
+                    pendingDeleteUris.forEach { uri ->
                         viewModel.deleteVideosByUri(uri.toString())
                         videoList.removeAll { it.contentUri == uri.toString() }
                     }
 
-                    refreshVisibleList()   // <--- IMPORTANT FIX
+                    pendingDeleteUris.clear()
+                    refreshVisibleList()
 
                     Toast.makeText(
                         requireContext(),
-                        "File deleted successfully", Toast.LENGTH_SHORT
+                        "Videos deleted successfully",
+                        Toast.LENGTH_SHORT
                     ).show()
 
                 } else {
-                    Toast.makeText(requireContext(), "File not deleted", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Delete cancelled",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
     }
 
+    private fun deletePreAndroid11(video: VideosModel) {
+        val rowsDeleted = requireContext().contentResolver.delete(
+            video.contentUri.toUri(),
+            null,
+            null
+        )
+
+        if (rowsDeleted > 0) {
+            viewModel.deleteVideosByUri(video.contentUri)
+            videoList.remove(video)
+        }
+    }
 
     private fun setupMainMenu() {
 //        binding.mainMenu.setOnClickListener { view ->
@@ -514,32 +548,154 @@ class VideosFragment : Fragment() {
             binding.actionShare.visibility = View.GONE
             binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_remove_24)
             binding.playListTxt.text = "Remove List"
+        } else{
+            binding.actionDelete.visibility = View.VISIBLE
+            binding.actionPrivate.visibility = View.VISIBLE
+            binding.actionShare.visibility = View.VISIBLE
+            binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_play_24)
+            binding.playListTxt.text = "Add To"
         }
 
         binding.actionPrivate.setOnClickListener {
 
+            val selectedVideos =
+                videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
 
-            Log.e("not playlist", isPlaylistView.toString())
-            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+            lifecycleScope.launch {
+                for (video in selectedVideos) {
+                    makeVideoPrivate(video)
+                }
 
-            for (video in selectedVideos) {
-                addFilesToPrivate(video.id, true, videoAdapter)
+                exitSelectionMode()
 
-                // Update local cache
-                videoList.find { it.id == video.id }?.isPrivate = true
+                if (selectedFolder != null) {
+                    openFolderVideos(selectedFolder!!)
+                } else {
+                    refreshVisibleList()
+                }
             }
-
-            exitSelectionMode()
-
-            // Refresh folder view if inside folder
-            if (selectedFolder != null) {
-                openFolderVideos(selectedFolder!!)
-            }
-
-
         }
 
     }
+
+    private fun setupPrivateDeleteLauncher() {
+        privateDeleteRequestLauncher =
+            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+
+                if (result.resultCode == Activity.RESULT_OK) {
+
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        pendingPrivateDeletes.forEach { video ->
+                            viewModel.updateVideoIsPrivate(
+                                videoId = video.id,
+                                isPrivate = true,
+                                privatePath = video.privatePath,   // stored temporarily
+                                newContentUri = video.contentUri
+                            )
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            pendingPrivateDeletes.forEach { video ->
+                                videoList.removeAll { it.id == video.id }
+                            }
+                            videoAdapter.notifyDataSetChanged()
+                            pendingPrivateDeletes.clear()
+                        }
+                    }
+
+                } else {
+                    Toast.makeText(requireContext(),
+                        "Permission denied. File not made private",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    pendingPrivateDeletes.clear()
+                }
+            }
+    }
+
+    private suspend fun makeVideoPrivate(video: VideosModel) {
+        withContext(Dispatchers.IO) {
+
+            try {
+                // Copy to private storage
+                val privatePath = savePrivateVideo(
+                    context = requireContext(),
+                    sourceUri = video.contentUri.toUri(),
+                    fileName = "${video.id}.mp4"
+                )
+
+                // store path temporarily
+                video.privatePath = privatePath
+
+                // Delete original
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+
+                    pendingPrivateDeletes.add(video)
+
+                    val pendingIntent = MediaStore.createDeleteRequest(
+                        requireContext().contentResolver,
+                        listOf(video.contentUri.toUri())
+                    )
+
+                    withContext(Dispatchers.Main) {
+                        privateDeleteRequestLauncher.launch(
+                            IntentSenderRequest.Builder(
+                                pendingIntent.intentSender
+                            ).build()
+                        )
+                    }
+
+                } else {
+                    // Pre-Android 11
+                    val rows = requireContext().contentResolver.delete(
+                        video.contentUri.toUri(),
+                        null,
+                        null
+                    )
+
+                    if (rows > 0) {
+                        viewModel.updateVideoIsPrivate(
+                            videoId = video.id,
+                            isPrivate = true,
+                            privatePath = privatePath,
+                            newContentUri = video.contentUri
+                        )
+
+                        withContext(Dispatchers.Main) {
+                            videoList.removeAll { it.id == video.id }
+                            videoAdapter.notifyDataSetChanged()
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+
+    suspend fun savePrivateVideo(
+        context: Context,
+        sourceUri: Uri,
+        fileName: String
+    ): String = withContext(Dispatchers.IO) {
+
+        val privateDir = File(context.filesDir, "private_videos")
+        if (!privateDir.exists()) privateDir.mkdirs()
+
+        val privateFile = File(privateDir, fileName)
+
+        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+            privateFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: throw IllegalStateException("Unable to open input stream")
+
+        privateFile.absolutePath
+    }
+
+
 
     /** ------------------ VIDEO LOGIC ------------------ **/
 
@@ -626,7 +782,17 @@ class VideosFragment : Fragment() {
         if (selectedFolder != null) {
             openFolderVideos(selectedFolder!!)
         } else {
+//            showSection(video = true, folder = false, selected = false, showBack = false)
             videoAdapter.filterList(videoList.toMutableList())
+//            isPlaylistView = false
+//            isFolder = false
+//            binding.lineVideos.visibility = View.VISIBLE
+//            binding.tabVideos.setTextColor(resources.getColor(R.color.green))
+//            showSection(video = true, folder = false, selected = false, showBack = false)
+//            setVideoRvTop(R.id.customTabs)
+//            observeVideos()
+//            setupBottomActions()
+
         }
     }
 
@@ -654,16 +820,38 @@ class VideosFragment : Fragment() {
     }
 
     private fun deleteSelectedVideos() {
-        if (!isPlaylistView) {
-            val selectedVideos = videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
+        val selectedVideos = videoAdapter.selectedItems
+            .map { videoAdapter.currentList[it] }
 
-            for (video in selectedVideos) {
-                deleteFileFromStorage(video)
+        if (selectedVideos.isEmpty()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+
+            pendingDeleteUris.clear()
+            pendingDeleteUris.addAll(
+                selectedVideos.map { it.contentUri.toUri() }
+            )
+
+            val pendingIntent = MediaStore.createDeleteRequest(
+                requireContext().contentResolver,
+                pendingDeleteUris
+            )
+
+            val request = IntentSenderRequest.Builder(
+                pendingIntent.intentSender
+            ).build()
+
+            deleteRequestLauncher.launch(request)
+
+        } else {
+            // Pre-Android 11
+            selectedVideos.forEach { video ->
+                deletePreAndroid11(video)
             }
-            exitSelectionMode()
             refreshVisibleList()
         }
 
+        exitSelectionMode()
     }
 
     private fun playSelectedVideos() {
@@ -672,14 +860,14 @@ class VideosFragment : Fragment() {
                 val positions = videoAdapter.selectedItems.toList()  // ensure fixed order
                 val source = videoAdapter.currentList
 
-                val firstVideo = source[positions.first()]
-                val uris = positions.map { source[it].contentUri }.toTypedArray()
-                val titles = positions.map { source[it].title }.toTypedArray()
+//                val firstVideo = source[positions.first()]
+//                val uris = positions.map { source[it].contentUri }.toTypedArray()
+//                val titles = positions.map { source[it].title }.toTypedArray()
 
-                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                    firstVideo.contentUri, titles, true, uris, 0
-                )
-                findNavController().navigate(action)
+//                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+//                    firstVideo.contentUri, titles, true, uris, 0
+//                )
+//                findNavController().navigate(action)
 
                 // FIXED – no more crash
                 for (pos in positions) {
@@ -688,6 +876,7 @@ class VideosFragment : Fragment() {
                     Log.e("video ids", videoId.toString())
                     viewModel.updateVideoIsPlaylist(videoId, true)
                 }
+                exitSelectionMode()
 
             }
         } else {
@@ -701,13 +890,21 @@ class VideosFragment : Fragment() {
                     Log.e("video ids", videoId.toString())
                     viewModel.updateVideoIsPlaylist(videoId, false)
                 }
+//                isPlaylistView = false
+//                isFolder = false
+//                binding.lineVideos.visibility = View.VISIBLE
+//                binding.tabVideos.setTextColor(resources.getColor(R.color.green))
+//                showSection(video = true, folder = false, selected = false, showBack = false)
+//                setVideoRvTop(R.id.customTabs)
+//                observeVideos()
+//                setupBottomActions()
+                highlightTab(binding.tabVideos)
 
+                exitSelectionMode()
             }
-            exitSelectionMode()
 
         }
     }
-
 
     private fun shareSelectedVideos() {
         if (!isPlaylistView) {
@@ -752,8 +949,8 @@ class VideosFragment : Fragment() {
         popupMenu.show()
     }
 
-    private fun addFilesToPrivate(videoId: Long, isPrivate: Boolean, videosAdapter: VideosAdapter) {
-        viewModel.updateVideoIsPrivate(videoId, isPrivate)
+    private fun addFilesToPrivate(videoId: Long, isPrivate: Boolean, privatePath: String, videosAdapter: VideosAdapter) {
+        viewModel.updateVideoIsPrivate(videoId, isPrivate, privatePath, newContentUri = null)
         Log.e("is private1", isPrivate.toString())
 
         videosAdapter.notifyDataSetChanged()

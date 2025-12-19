@@ -71,8 +71,12 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
         repository.deleteVideoByUri(uri)
     }
 
-    fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean) = viewModelScope.launch(Dispatchers.IO) {
-        repository.updateVideoIsPrivate(videoId, isPrivate)
+    fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?, newContentUri: String?) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateVideoIsPrivate(videoId, isPrivate, privatePath, newContentUri)
+    }
+
+    fun updateVideoAfterUnlock(videoId: Long, newContentUri: String, newPath: String) = viewModelScope.launch(Dispatchers.IO) {
+        repository.updateVideoAfterUnlock(videoId, newContentUri, newPath)
     }
 
     fun updateVideoIsPlaylist(videoId: Long, isPlaylist: Boolean) = viewModelScope.launch(Dispatchers.IO) {

@@ -57,6 +57,10 @@
             app:argType="string" />
 
         <argument
+            android:name="videoPrivate"
+            app:argType="string" />
+
+        <argument
             android:name="videoTitle"
             app:argType="string[]"/>
 
