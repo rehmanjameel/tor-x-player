@@ -79,6 +79,7 @@ class AudiosFragment : Fragment() {
 
     private val pendingDeleteUris = mutableListOf<Uri>()
 
+    private var isSelectionMode = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -121,6 +122,7 @@ class AudiosFragment : Fragment() {
                 if (query.isNotEmpty()) {
                     searchAudios(query)
                 } else {
+                    setAudioRvTop(R.id.customTabs)
                     binding.audioRV.visibility = View.GONE
                     binding.emptyView.visibility = View.GONE
                 }
@@ -159,6 +161,7 @@ class AudiosFragment : Fragment() {
             binding.historyLayout.visibility = View.VISIBLE
             binding.historyEmptyView.visibility = View.VISIBLE
             binding.customTabs.visibility = View.VISIBLE
+            setAudioRvTop(R.id.customTabs)
 
             audioAdapter.filterList(audioList) // restore original data
 
@@ -178,9 +181,12 @@ class AudiosFragment : Fragment() {
         }.toMutableList()
         if (filteredAudios.isNotEmpty()) {
             audioAdapter.filterList(filteredAudios)
+            setAudioRvTop(R.id.searchLayout)
             binding.audioRV.visibility = View.VISIBLE
             binding.emptyView.visibility = View.GONE
         } else {
+            setAudioRvTop(R.id.customTabs)
+
             binding.audioRV.visibility = View.GONE
             binding.emptyView.visibility = View.VISIBLE
             binding.emptyView.text = "No videos found"
@@ -488,7 +494,8 @@ class AudiosFragment : Fragment() {
     private fun setupBackPress() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (audioAdapter.isSelectionMode) {
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
                 refreshVisibleList()
             } else {
                 findNavController().popBackStack()
@@ -518,7 +525,6 @@ class AudiosFragment : Fragment() {
 
         binding.actionPrivate.setOnClickListener {
 
-
             Log.e("not playlist", isPlaylistView.toString())
             val selectedVideos = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
 
@@ -529,14 +535,13 @@ class AudiosFragment : Fragment() {
                 audioList.find { it.id == video.id }?.isPrivate = true
             }
 
-            exitSelectionMode()
+            if (isSelectionMode)
+                exitSelectionMode()
 
             // Refresh folder view if inside folder
             if (selectedFolder != null) {
                 openFolderVideos(selectedFolder!!)
             }
-
-
         }
 
     }
@@ -582,6 +587,7 @@ class AudiosFragment : Fragment() {
             audioAdapter.selectedItems.add(position)
             audioAdapter.notifyDataSetChanged()
         }
+        isSelectionMode = true
         binding.bottomActionBar.visibility = View.VISIBLE
         binding.selectAllCheckbox.visibility = View.VISIBLE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -599,6 +605,7 @@ class AudiosFragment : Fragment() {
             audioAdapter.selectedItems.clear()
             audioAdapter.notifyDataSetChanged()
         }
+        isSelectionMode = false
         binding.selectAllCheckbox.visibility = View.GONE
         binding.bottomActionBar.visibility = View.GONE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -617,7 +624,8 @@ class AudiosFragment : Fragment() {
     private fun toggleSelectAll() {
         if (isPlaylistView) {
             if (playlistAudioAdapter.selectedItems.size == playlistAudioAdapter.itemCount) {
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
 
             } else {
 
@@ -628,7 +636,8 @@ class AudiosFragment : Fragment() {
         } else {
 
             if (audioAdapter.selectedItems.size == audioAdapter.itemCount) {
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
             } else {
                 audioAdapter.selectedItems.clear()
                 audioAdapter.selectedItems.addAll(audioAdapter.currentList.indices)
@@ -669,7 +678,8 @@ class AudiosFragment : Fragment() {
             refreshVisibleList()
         }
 
-        exitSelectionMode()
+        if (isSelectionMode)
+            exitSelectionMode()
 
     }
 
@@ -741,7 +751,8 @@ class AudiosFragment : Fragment() {
                     viewModel.updateAudioIsPlaylist(audioId, true)
                 }
 
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
             }
         } else {
             if (playlistAudioAdapter.selectedItems.isNotEmpty()) {
@@ -756,12 +767,12 @@ class AudiosFragment : Fragment() {
                 }
 
                 highlightTab(binding.tabAudios)
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
             }
 
         }
     }
-
 
     private fun shareSelectedAudios() {
         if (!isPlaylistView) {
@@ -773,7 +784,8 @@ class AudiosFragment : Fragment() {
                 putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
             }
             startActivity(Intent.createChooser(shareIntent, "Share audios"))
-            exitSelectionMode()
+            if (isSelectionMode)
+                exitSelectionMode()
         }
     }
 
@@ -783,6 +795,12 @@ class AudiosFragment : Fragment() {
         binding.audioFolderRV.visibility = if (folder) View.VISIBLE else View.GONE
         binding.selectedAudiosRV.visibility = if (selected) View.VISIBLE else View.GONE
         binding.folderBackLayout.visibility = if (showBack) View.VISIBLE else View.GONE
+
+        setupBottomActions()
+
+        if (isSelectionMode)
+            exitSelectionMode()
+
     }
 
     /** ---------- CONSTRAINT CLEAN VERSION ---------- **/

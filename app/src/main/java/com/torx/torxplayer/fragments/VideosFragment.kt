@@ -70,6 +70,7 @@ class VideosFragment : Fragment() {
     private lateinit var privateDeleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private val pendingPrivateDeletes = mutableListOf<VideosModel>()
 
+    private var isSelectionMode = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -286,7 +287,6 @@ class VideosFragment : Fragment() {
                 showSection(video = true, folder = false, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 observeVideos()
-                setupBottomActions()
             }
 
             binding.tabFolder -> {
@@ -297,7 +297,6 @@ class VideosFragment : Fragment() {
                 showSection(video = false, folder = true, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 binding.emptyView.visibility = View.GONE
-                setupBottomActions()
             }
 
             binding.tabPlaylist -> {
@@ -309,7 +308,6 @@ class VideosFragment : Fragment() {
                 setVideoRvTop(R.id.customTabs)
                 setupPlaylistVideoAdapter()
                 observePlaylistVideos()
-                setupBottomActions()
             }
         }
     }
@@ -320,6 +318,10 @@ class VideosFragment : Fragment() {
         binding.videoFolderRV.visibility = if (folder) View.VISIBLE else View.GONE
         binding.selectedVideosRV.visibility = if (selected) View.VISIBLE else View.GONE
         binding.folderBackLayout.visibility = if (showBack) View.VISIBLE else View.GONE
+
+        setupBottomActions()
+        if (isSelectionMode)
+            exitSelectionMode()
     }
 
     /** ---------- CONSTRAINT CLEAN VERSION ---------- **/
@@ -385,7 +387,8 @@ class VideosFragment : Fragment() {
     private fun setupBackPress() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (videoAdapter.isSelectionMode) {
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
                 if (binding.selectAllCheckbox.isChecked) {
                     binding.selectAllCheckbox.isChecked = false
                 }
@@ -438,6 +441,7 @@ class VideosFragment : Fragment() {
             binding.historyLayout.visibility = View.VISIBLE
             binding.customTabs.visibility = View.VISIBLE
 
+            setVideoRvTop(R.id.customTabs)
             videoAdapter.filterList(videoList)
             val imm =
                 requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -566,7 +570,8 @@ class VideosFragment : Fragment() {
                     makeVideoPrivate(video)
                 }
 
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
 
                 if (selectedFolder != null) {
                     openFolderVideos(selectedFolder!!)
@@ -752,6 +757,7 @@ class VideosFragment : Fragment() {
             videoAdapter.selectedItems.add(position)
             videoAdapter.notifyDataSetChanged()
         }
+        isSelectionMode = true
         binding.bottomActionBar.visibility = View.VISIBLE
         binding.selectAllCheckbox.visibility = View.VISIBLE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -769,6 +775,7 @@ class VideosFragment : Fragment() {
             videoAdapter.selectedItems.clear()
             videoAdapter.notifyDataSetChanged()
         }
+        isSelectionMode = false
         binding.selectAllCheckbox.visibility = View.GONE
         binding.bottomActionBar.visibility = View.GONE
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility =
@@ -782,24 +789,15 @@ class VideosFragment : Fragment() {
         if (selectedFolder != null) {
             openFolderVideos(selectedFolder!!)
         } else {
-//            showSection(video = true, folder = false, selected = false, showBack = false)
             videoAdapter.filterList(videoList.toMutableList())
-//            isPlaylistView = false
-//            isFolder = false
-//            binding.lineVideos.visibility = View.VISIBLE
-//            binding.tabVideos.setTextColor(resources.getColor(R.color.green))
-//            showSection(video = true, folder = false, selected = false, showBack = false)
-//            setVideoRvTop(R.id.customTabs)
-//            observeVideos()
-//            setupBottomActions()
-
         }
     }
 
     private fun toggleSelectAll() {
         if (isPlaylistView) {
             if (playlistVideoAdapter.selectedItems.size == playlistVideoAdapter.itemCount) {
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
 
             } else {
 
@@ -810,7 +808,8 @@ class VideosFragment : Fragment() {
         } else {
 
             if (videoAdapter.selectedItems.size == videoAdapter.itemCount) {
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
             } else {
                 videoAdapter.selectedItems.clear()
                 videoAdapter.selectedItems.addAll(videoAdapter.currentList.indices)
@@ -851,7 +850,8 @@ class VideosFragment : Fragment() {
             refreshVisibleList()
         }
 
-        exitSelectionMode()
+        if (isSelectionMode)
+            exitSelectionMode()
     }
 
     private fun playSelectedVideos() {
@@ -876,7 +876,8 @@ class VideosFragment : Fragment() {
                     Log.e("video ids", videoId.toString())
                     viewModel.updateVideoIsPlaylist(videoId, true)
                 }
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
 
             }
         } else {
@@ -890,17 +891,10 @@ class VideosFragment : Fragment() {
                     Log.e("video ids", videoId.toString())
                     viewModel.updateVideoIsPlaylist(videoId, false)
                 }
-//                isPlaylistView = false
-//                isFolder = false
-//                binding.lineVideos.visibility = View.VISIBLE
-//                binding.tabVideos.setTextColor(resources.getColor(R.color.green))
-//                showSection(video = true, folder = false, selected = false, showBack = false)
-//                setVideoRvTop(R.id.customTabs)
-//                observeVideos()
-//                setupBottomActions()
                 highlightTab(binding.tabVideos)
 
-                exitSelectionMode()
+                if (isSelectionMode)
+                    exitSelectionMode()
             }
 
         }
@@ -916,7 +910,8 @@ class VideosFragment : Fragment() {
                 putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
             }
             startActivity(Intent.createChooser(shareIntent, "Share videos"))
-            exitSelectionMode()
+            if (isSelectionMode)
+                exitSelectionMode()
         }
     }
 
@@ -987,9 +982,11 @@ class VideosFragment : Fragment() {
         val filtered = videoList.filter { it.title.contains(query, ignoreCase = true) }
         if (filtered.isNotEmpty()) {
             videoAdapter.filterList(filtered.toMutableList())
+            setVideoRvTop(R.id.searchLayout)
             binding.videoRV.visibility = View.VISIBLE
             binding.emptyView.visibility = View.GONE
         } else {
+            setVideoRvTop(R.id.customTabs)
             binding.videoRV.visibility = View.GONE
             binding.emptyView.visibility = View.VISIBLE
             binding.emptyView.text = "No videos found"
