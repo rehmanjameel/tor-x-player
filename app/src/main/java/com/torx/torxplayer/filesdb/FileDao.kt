@@ -39,8 +39,8 @@ interface FileDao {
     @Query("DELETE FROM video WHERE content_uri = :uri")
     suspend fun deleteByUri(uri: String)
 
-    @Query("Update video SET is_private = :isPrivate, private_path = :privatePath, content_uri = :newContentUri WHERE id = :videoId")
-    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?, newContentUri: String?)
+    @Query("Update video SET is_private = :isPrivate, private_path = :privatePath WHERE id = :videoId")
+    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?)
 
     @Query("UPDATE video SET is_private = 0, content_uri = :newContentUri, path = :newPath WHERE id = :videoId")
     suspend fun updateVideoAfterUnlock(
@@ -51,8 +51,8 @@ interface FileDao {
     @Query("Update video SET is_playlist = :isPlaylist WHERE id = :videoId")
     suspend fun updateVideoIsPlaylist(videoId: Long, isPlaylist: Boolean)
 
-    @Query("Update video SET is_history = :isHistory WHERE id = :videoId")
-    suspend fun updateVideoIsHistory(videoId: Long, isHistory: Boolean)
+    @Query("Update video SET is_history = :isHistory WHERE content_uri = :contentUri")
+    suspend fun updateVideoIsHistory(contentUri: String, isHistory: Boolean)
 
     @Query("UPDATE video SET is_history = 0 WHERE is_history = 1")
     suspend fun clearAllHistory()
@@ -60,7 +60,7 @@ interface FileDao {
     @Query("SELECT * FROM video WHERE is_private = 1  Order by date_added DESC")
     fun getPrivateVideo(): LiveData<MutableList<VideosModel>>
 
-    @Query("SELECT * FROM video WHERE is_playlist = 1  Order by date_added DESC")
+    @Query("SELECT * FROM video WHERE is_playlist = 1 and is_private = 0  Order by date_added DESC")
     fun getPlaylistVideo(): LiveData<MutableList<VideosModel>>
 
     @Query("SELECT * FROM video WHERE is_history = 1  Order by date_added DESC")
@@ -103,8 +103,8 @@ interface FileDao {
     @Query("SELECT uri FROM audio")
     fun getAllUrisLive(): LiveData<List<String>>
 
-    @Query("Update audio SET is_private = :isPrivate WHERE id = :audioId")
-    suspend fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean)
+    @Query("Update audio SET is_private = :isPrivate, private_path = :privatePath WHERE id = :audioId")
+    suspend fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean, privatePath: String?)
 
     @Query("SELECT * FROM audio WHERE is_private = 1  Order by id DESC")
     fun getPrivateAudio(): LiveData<MutableList<AudiosModel>>
@@ -125,7 +125,7 @@ interface FileDao {
     @Query("UPDATE audio SET is_history = 0 WHERE is_history = 1")
     suspend fun clearAllAudioHistory()
 
-    @Query("SELECT * FROM audio WHERE is_playlist = 1  Order by id DESC")
+    @Query("SELECT * FROM audio WHERE is_playlist = 1 and is_private = 0  Order by id DESC")
     fun getPlaylistAudio(): LiveData<MutableList<AudiosModel>>
 
     @Query("SELECT * FROM audio WHERE is_history = 1  Order by id DESC")

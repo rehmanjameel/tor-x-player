@@ -10,17 +10,21 @@ import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentDownloadBinding
+import com.torx.torxplayer.utils.MediaDownloader
 import org.json.JSONArray
 import java.net.URL
 import java.net.URLEncoder
 
 class DownloadFragment : Fragment() {
 
+    private val args: DownloadFragmentArgs by navArgs()
     private lateinit var binding: FragmentDownloadBinding
 
     private var isSearchMode = false
@@ -41,6 +45,27 @@ class DownloadFragment : Fragment() {
         setupSearch()
         setupClicks()
         setupBackPress()
+
+        binding.btnDownload.setOnClickListener {
+
+            val url = binding.etUrl.text.toString().trim()
+
+            when {
+                url.endsWith(".mp4") || url.endsWith(".mp3") -> {
+                    val fileName = "media_${System.currentTimeMillis()}.mp4"
+                    MediaDownloader.download(requireContext(), url, fileName)
+                }
+
+                else -> {
+                    Toast.makeText(
+                        requireContext(),
+                        "Only direct media links are supported",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
 
         return binding.root
     }
@@ -127,7 +152,7 @@ class DownloadFragment : Fragment() {
         binding.mediaWV.visibility = View.GONE
 
         // ❗ IMPORTANT: overlay must be GONE for suggestions
-        binding.webviewOverlay.visibility = View.GONE
+//        binding.webviewOverlay.visibility = View.GONE
         binding.searchTV.visibility = View.VISIBLE
 
         binding.searchTIET.requestFocus()
@@ -137,7 +162,7 @@ class DownloadFragment : Fragment() {
     private fun exitSearchMode() {
         isSearchMode = false
 
-        binding.downloadLinksLayout.visibility = View.VISIBLE
+//        binding.downloadLinksLayout.visibility = View.VISIBLE
         binding.searchTV.visibility = View.GONE
 
         binding.searchTIET.clearFocus()
@@ -211,6 +236,17 @@ class DownloadFragment : Fragment() {
                         }
                         else -> {
                             isEnabled = false
+//                            if (args.isVideo) {
+////                                val action = DownloadFragmentDirections.actionDownloadFragmentToVideosFragment()
+//                                findNavController().navigate(R.id.action_downloadFragment_to_videosFragment)
+//                                findNavController().popBackStack()
+//                            } else {
+////                                val action = DownloadFragmentDirections.actionDownloadFragmentToAudiosFragment()
+//                                findNavController().navigate(R.id.action_downloadFragment_to_audiosFragment)
+//                                findNavController().popBackStack()
+//
+//                            }
+//                            findNavController().popBackStack()
                             requireActivity()
                                 .onBackPressedDispatcher
                                 .onBackPressed()

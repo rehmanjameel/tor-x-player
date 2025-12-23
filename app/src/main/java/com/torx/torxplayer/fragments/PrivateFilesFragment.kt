@@ -12,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.MimeTypeMap
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.addCallback
@@ -39,6 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
 
 class PrivateFilesFragment : Fragment() {
 
@@ -251,6 +253,7 @@ class PrivateFilesFragment : Fragment() {
                                 PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
                                     video.contentUri,
                                     video.privatePath?: "",
+                                    videoList.map { it.privatePath }.toTypedArray(),
                                     videoList.map { it.title }.toTypedArray(),
                                     false,
                                     videoList.map { it.contentUri }.toTypedArray(),
@@ -367,7 +370,7 @@ class PrivateFilesFragment : Fragment() {
 
                 for (video in selectedVideos) {
                     lifecycleScope.launch {
-                        makeVideoPublic(video)
+                        restoreVideo(video)
                     }
 
                     // Update local cache
@@ -377,7 +380,9 @@ class PrivateFilesFragment : Fragment() {
                 val selectedAudios = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
 
                 for (audio in selectedAudios) {
-                    addAudioFilesToPublic(audio.id, false, audioAdapter)
+                    lifecycleScope.launch {
+                        restoreAudios(audio)
+                    }
 
                     // Update local cache
                     audioList.find { it.id == audio.id }?.isPrivate = false
@@ -398,64 +403,117 @@ class PrivateFilesFragment : Fragment() {
         Toast.makeText(requireContext(), "Removed from private", Toast.LENGTH_SHORT).show()
     }
 
-    private suspend fun makeVideoPublic(video: VideosModel) =
+    suspend fun restoreVideo(video: VideosModel) =
         withContext(Dispatchers.IO) {
 
-            try {
-                val resolver = requireContext().contentResolver
-                val privateFile = File(video.privatePath ?: return@withContext)
+            val privateFile = File(video.privatePath ?: return@withContext)
+            if (!privateFile.exists()) return@withContext
 
-                if (!privateFile.exists()) return@withContext
+            val resolver = requireContext().contentResolver
 
-                // 1️⃣ Insert into MediaStore
-                val values = ContentValues().apply {
-                    put(MediaStore.Video.Media.DISPLAY_NAME, video.title)
-                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                    put(
-                        MediaStore.Video.Media.RELATIVE_PATH,
-                        Environment.DIRECTORY_MOVIES + "/${video.folderName}"
-                    )
-                }
-
-                val newUri = resolver.insert(
-                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                    values
-                ) ?: throw IllegalStateException("MediaStore insert failed")
-
-                // 2️⃣ Copy data back to public storage
-                resolver.openOutputStream(newUri)?.use { output ->
-                    privateFile.inputStream().use { input ->
-                        input.copyTo(output)
-                    }
-                }
-
-                // 3️⃣ Delete private copy
-                privateFile.delete()
-
-                // 4️⃣ Build correct new PATH
-//                val newPath =
-//                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
-//                        .absolutePath + "/${video.folderName}/${privateFile.name}"
-//
-//                // 5️⃣ Update SAME DB ROW (no duplication)
-//                viewModel.updateVideoAfterUnlock(
-//                    videoId = video.id,
-//                    newContentUri = newUri.toString(),
-//                    newPath = newPath
-//                )
-                viewModel.deleteVideosById(video.id)
-
-            } catch (e: Exception) {
-                e.printStackTrace()
+            val values = ContentValues().apply {
+                put(MediaStore.Video.Media.DISPLAY_NAME, privateFile.name)
+                put(MediaStore.Video.Media.MIME_TYPE, video.mimeType)
+                put(
+                    MediaStore.Video.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_MOVIES + "/" + video.folderName
+                )
             }
+
+            val uri = resolver.insert(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                values
+            ) ?: return@withContext
+
+            resolver.openOutputStream(uri)?.use { out ->
+                FileInputStream(privateFile).copyTo(out)
+            }
+
+            privateFile.delete()
+
+            // THIS is the missing line
+            viewModel.deleteVideosById(video.id)
+
         }
+
+    suspend fun restoreAudios(audio: AudiosModel) =
+        withContext(Dispatchers.IO) {
+
+            val privateFile = File(audio.privatePath ?: return@withContext)
+            if (!privateFile.exists()) return@withContext
+
+            val resolver = requireContext().contentResolver
+
+            val safeAlbum = sanitizeFolderName(audio.album)
+            val safeName = ensureExtension(privateFile, audio.mimeType)
+
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, safeName)
+                put(MediaStore.Audio.Media.MIME_TYPE, audio.mimeType)
+                put(
+                    MediaStore.Audio.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_MUSIC + "/" + safeAlbum
+                )
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
+            }
+
+            val uri = resolver.insert(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                values
+            ) ?: return@withContext
+
+            resolver.openOutputStream(uri)?.use { out ->
+                FileInputStream(privateFile).copyTo(out)
+            }
+
+            // finalize
+            resolver.update(
+                uri,
+                ContentValues().apply {
+                    put(MediaStore.Audio.Media.IS_PENDING, 0)
+                },
+                null,
+                null
+            )
+
+            Log.e("AUDIO_DEBUG", "private exists=${privateFile.exists()}")
+            Log.e("AUDIO_DEBUG", "album=$safeAlbum")
+            Log.e("AUDIO_DEBUG", "name=$safeName")
+            Log.e("AUDIO_DEBUG", "mime=${audio.mimeType}")
+            Log.e("AUDIO_DEBUG", "uri=$uri")
+
+            // delete private copy ONLY after finalize
+            privateFile.delete()
+
+            // remove vault DB row
+            viewModel.deleteAudiosById(audio.id)
+        }
+
+    fun sanitizeFolderName(input: String?): String {
+        return input
+            ?.replace(Regex("[^a-zA-Z0-9 _-]"), "")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "MyApp"
+    }
+
+    fun ensureExtension(file: File, mime: String): String {
+        return if (file.name.contains(".")) {
+            file.name
+        } else {
+            val ext = MimeTypeMap.getSingleton()
+                .getExtensionFromMimeType(mime) ?: "mp3"
+            "${file.name}.$ext"
+        }
+    }
+
 
     private fun addAudioFilesToPublic(
         audioId: Long,
         isPrivate: Boolean,
         audioAdapter: AudioAdapter
     ) {
-        viewModel.updateAudioIsPrivate(audioId, isPrivate)
+        viewModel.updateAudioIsPrivate(audioId, isPrivate, null)
         Log.e("is private1", isPrivate.toString())
 
         audioAdapter.notifyDataSetChanged()
@@ -575,6 +633,8 @@ class PrivateFilesFragment : Fragment() {
                             val action =
                                 PrivateFilesFragmentDirections.actionPrivateFilesFragmentToAudioPlayerFragment(
                                     audio.uri,
+                                    audio.privatePath?: "",
+                                    audioList.map { it.privatePath }.toTypedArray(),
                                     audioList.map { it.title }.toTypedArray(),
                                     false,
                                     audioList.map { it.uri }.toTypedArray(),

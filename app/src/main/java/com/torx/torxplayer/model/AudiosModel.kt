@@ -34,4 +34,14 @@ class AudiosModel(
 
     @ColumnInfo(name = "is_history")
     var isHistory: Boolean = false,
+
+    @ColumnInfo(name = "private_path")
+    var privatePath: String? = null,
+
+    @ColumnInfo(name = "mime_type")
+    val mimeType: String,
+
+    @ColumnInfo(name = "folder_name")
+    val folderName: String
+
 )

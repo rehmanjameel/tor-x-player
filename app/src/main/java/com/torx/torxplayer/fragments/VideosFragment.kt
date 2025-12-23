@@ -3,9 +3,11 @@ package com.torx.torxplayer.fragments
 import android.Manifest
 import android.app.Activity
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -72,6 +74,15 @@ class VideosFragment : Fragment() {
 
     private var isSelectionMode = false
 
+    enum class ActiveTab {
+        VIDEOS,
+        PLAYLIST,
+        FOLDER
+    }
+
+    private var activeTab = ActiveTab.VIDEOS
+
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -82,11 +93,11 @@ class VideosFragment : Fragment() {
         setupSearch()
         setupDonationClick()
         setupDeleteLauncher()
-        setupPrivateDeleteLauncher()
+//        setupPrivateDeleteLauncher()
 
         //open the download screen
         binding.downloadIcon.setOnClickListener {
-            val action = VideosFragmentDirections.actionVideosFragmentToDownloadFragment()
+            val action = VideosFragmentDirections.actionVideosFragmentToDownloadFragment(true)
             findNavController().navigate(action)
         }
 
@@ -148,6 +159,7 @@ class VideosFragment : Fragment() {
                 val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                     video.contentUri,
                     video.privatePath?: "",
+                    videoList.map { it.privatePath }.toTypedArray(),
                     videoHistoryList.map { it.title }.toTypedArray(),
                     true,
                     videoHistoryList.map { it.contentUri }.toTypedArray(),
@@ -172,13 +184,14 @@ class VideosFragment : Fragment() {
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri,
                         video.privatePath?: "",
+                        videoList.map { it.privatePath }.toTypedArray(),
                         videos.map { it.title }.toTypedArray(),
                         true,
                         videos.map { it.contentUri }.toTypedArray(),
                         position
                     )
                     findNavController().navigate(action)
-                    viewModel.updateVideoIsHistory(video.id, true)
+                    viewModel.updateVideoIsHistory(video.contentUri, true)
                 }
 
                 override fun onLongItemClick(position: Int) {
@@ -217,13 +230,14 @@ class VideosFragment : Fragment() {
                     val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
                         video.contentUri,
                         video.privatePath?: "",
+                        videoList.map { it.privatePath }.toTypedArray(),
                         videos.map { it.title }.toTypedArray(),
                         true,
                         videos.map { it.contentUri }.toTypedArray(),
                         position
                     )
                     findNavController().navigate(action)
-                    viewModel.updateVideoIsHistory(video.id, true)
+                    viewModel.updateVideoIsHistory(video.contentUri, true)
                 }
 
                 override fun onLongItemClick(position: Int) {
@@ -258,11 +272,15 @@ class VideosFragment : Fragment() {
     /** ------------------ TAB HANDLER ------------------ **/
     private fun setupTabClicks() {
         binding.tabVideos.setOnClickListener {
+            activeTab = ActiveTab.VIDEOS
             highlightTab(binding.tabVideos)
             setupFolderBack()
         }
-        binding.tabFolder.setOnClickListener { highlightTab(binding.tabFolder) }
+        binding.tabFolder.setOnClickListener {
+           activeTab = ActiveTab.FOLDER
+            highlightTab(binding.tabFolder) }
         binding.tabPlaylist.setOnClickListener {
+            activeTab = ActiveTab.PLAYLIST
             highlightTab(binding.tabPlaylist)
             setupFolderBack()
         }
@@ -280,34 +298,37 @@ class VideosFragment : Fragment() {
 
         when (selected) {
             binding.tabVideos -> {
-                isPlaylistView = false
-                isFolder = false
+                showSection(video = true, folder = false, selected = false, showBack = false)
                 binding.lineVideos.visibility = View.VISIBLE
                 selected.setTextColor(resources.getColor(R.color.green))
-                showSection(video = true, folder = false, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 observeVideos()
+                isPlaylistView = false
+                isFolder = false
+                setupBottomActions()
             }
 
             binding.tabFolder -> {
-                isPlaylistView = false
-                isFolder = true
                 binding.lineFolder.visibility = View.VISIBLE
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = true, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 binding.emptyView.visibility = View.GONE
+                isPlaylistView = false
+                isFolder = true
+                setupBottomActions()
             }
 
             binding.tabPlaylist -> {
-                isPlaylistView = true
-                isFolder = false
                 binding.linePlaylist.visibility = View.VISIBLE
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = false, selected = true, showBack = false)
                 setVideoRvTop(R.id.customTabs)
                 setupPlaylistVideoAdapter()
                 observePlaylistVideos()
+                isPlaylistView = true
+                isFolder = false
+                setupBottomActions()
             }
         }
     }
@@ -318,11 +339,8 @@ class VideosFragment : Fragment() {
         binding.videoFolderRV.visibility = if (folder) View.VISIBLE else View.GONE
         binding.selectedVideosRV.visibility = if (selected) View.VISIBLE else View.GONE
         binding.folderBackLayout.visibility = if (showBack) View.VISIBLE else View.GONE
-
-        setupBottomActions()
-        if (isSelectionMode)
-            exitSelectionMode()
     }
+
 
     /** ---------- CONSTRAINT CLEAN VERSION ---------- **/
     private fun setVideoRvTop(anchorId: Int) {
@@ -565,140 +583,165 @@ class VideosFragment : Fragment() {
             val selectedVideos =
                 videoAdapter.selectedItems.map { videoAdapter.currentList[it] }
 
-            lifecycleScope.launch {
-                for (video in selectedVideos) {
-                    makeVideoPrivate(video)
-                }
+            if (selectedVideos.isEmpty()) return@setOnClickListener
 
-                if (isSelectionMode)
-                    exitSelectionMode()
+            onMakePrivateClicked(selectedVideos)
 
-                if (selectedFolder != null) {
-                    openFolderVideos(selectedFolder!!)
-                } else {
-                    refreshVisibleList()
-                }
-            }
+            if (isSelectionMode) exitSelectionMode()
         }
 
     }
 
-    private fun setupPrivateDeleteLauncher() {
-        privateDeleteRequestLauncher =
-            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+    private val pendingPrivateVideos = mutableListOf<VideosModel>()
 
-                if (result.resultCode == Activity.RESULT_OK) {
-
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        pendingPrivateDeletes.forEach { video ->
-                            viewModel.updateVideoIsPrivate(
-                                videoId = video.id,
-                                isPrivate = true,
-                                privatePath = video.privatePath,   // stored temporarily
-                                newContentUri = video.contentUri
-                            )
-                        }
-
-                        withContext(Dispatchers.Main) {
-                            pendingPrivateDeletes.forEach { video ->
-                                videoList.removeAll { it.id == video.id }
-                            }
-                            videoAdapter.notifyDataSetChanged()
-                            pendingPrivateDeletes.clear()
-                        }
-                    }
-
-                } else {
-                    Toast.makeText(requireContext(),
-                        "Permission denied. File not made private",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    pendingPrivateDeletes.clear()
+    private val movePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                lifecycleScope.launch {
+                    movePendingVideosToPrivate()
                 }
+            } else {
+                pendingPrivateVideos.clear()
             }
+        }
+
+    fun onMakePrivateClicked(videos: List<VideosModel>) {
+
+        pendingPrivateVideos.clear()
+        pendingPrivateVideos.addAll(videos)
+
+        val uris = videos.map { it.contentUri.toUri() }
+
+        val pendingIntent = MediaStore.createWriteRequest(
+            requireContext().contentResolver,
+            uris
+        )
+
+        movePermissionLauncher.launch(
+            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+        )
     }
 
-    private suspend fun makeVideoPrivate(video: VideosModel) {
+
+    private suspend fun movePendingVideosToPrivate() =
         withContext(Dispatchers.IO) {
 
-            try {
-                // Copy to private storage
-                val privatePath = savePrivateVideo(
-                    context = requireContext(),
-                    sourceUri = video.contentUri.toUri(),
-                    fileName = "${video.id}.mp4"
-                )
+            val resolver = requireContext().contentResolver
+            val privateDir = requireContext()
+                .getExternalFilesDir("private_videos")!!
+            if (!privateDir.exists()) privateDir.mkdirs()
 
-                // store path temporarily
-                video.privatePath = privatePath
+            for (video in pendingPrivateVideos) {
 
-                // Delete original
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val sourceUri = video.contentUri.toUri()
+                val destFile = File(privateDir, video.title)
 
-                    pendingPrivateDeletes.add(video)
-
-                    val pendingIntent = MediaStore.createDeleteRequest(
-                        requireContext().contentResolver,
-                        listOf(video.contentUri.toUri())
-                    )
-
-                    withContext(Dispatchers.Main) {
-                        privateDeleteRequestLauncher.launch(
-                            IntentSenderRequest.Builder(
-                                pendingIntent.intentSender
-                            ).build()
-                        )
-                    }
-
-                } else {
-                    // Pre-Android 11
-                    val rows = requireContext().contentResolver.delete(
-                        video.contentUri.toUri(),
-                        null,
-                        null
-                    )
-
-                    if (rows > 0) {
-                        viewModel.updateVideoIsPrivate(
-                            videoId = video.id,
-                            isPrivate = true,
-                            privatePath = privatePath,
-                            newContentUri = video.contentUri
-                        )
-
-                        withContext(Dispatchers.Main) {
-                            videoList.removeAll { it.id == video.id }
-                            videoAdapter.notifyDataSetChanged()
-                        }
+                // Copy
+                resolver.openInputStream(sourceUri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
                     }
                 }
 
-            } catch (e: Exception) {
-                e.printStackTrace()
+                // Remove from MediaStore (permission already granted)
+                resolver.delete(sourceUri, null, null)
+
+                // Update DB (ONLY private info)
+                viewModel.updateVideoIsPrivate(
+                    videoId = video.id,
+                    isPrivate = true,
+                    privatePath = destFile.absolutePath
+                )
+            }
+
+            pendingPrivateVideos.clear()
+
+            withContext(Dispatchers.Main) {
+                refreshVisibleList()
             }
         }
-    }
 
 
-    suspend fun savePrivateVideo(
-        context: Context,
-        sourceUri: Uri,
-        fileName: String
-    ): String = withContext(Dispatchers.IO) {
-
-        val privateDir = File(context.filesDir, "private_videos")
-        if (!privateDir.exists()) privateDir.mkdirs()
-
-        val privateFile = File(privateDir, fileName)
-
-        context.contentResolver.openInputStream(sourceUri)?.use { input ->
-            privateFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        } ?: throw IllegalStateException("Unable to open input stream")
-
-        privateFile.absolutePath
-    }
+//    private suspend fun makeVideoPrivate(video: VideosModel) {
+//        withContext(Dispatchers.IO) {
+//
+//            try {
+//                // Copy to private storage
+//                val privatePath = savePrivateVideo(
+//                    context = requireContext(),
+//                    sourceUri = video.contentUri.toUri(),
+//                    fileName = "${video.id}.mp4"
+//                )
+//
+//                // store path temporarily
+//                video.privatePath = privatePath
+//
+//                // Delete original
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//
+//                    pendingPrivateDeletes.add(video)
+//
+//                    val pendingIntent = MediaStore.createDeleteRequest(
+//                        requireContext().contentResolver,
+//                        listOf(video.contentUri.toUri())
+//                    )
+//
+//                    withContext(Dispatchers.Main) {
+//                        privateDeleteRequestLauncher.launch(
+//                            IntentSenderRequest.Builder(
+//                                pendingIntent.intentSender
+//                            ).build()
+//                        )
+//                    }
+//
+//                } else {
+//                    // Pre-Android 11
+//                    val rows = requireContext().contentResolver.delete(
+//                        video.contentUri.toUri(),
+//                        null,
+//                        null
+//                    )
+//
+//                    if (rows > 0) {
+//                        viewModel.updateVideoIsPrivate(
+//                            videoId = video.id,
+//                            isPrivate = true,
+//                            privatePath = privatePath
+//                        )
+//
+//                        withContext(Dispatchers.Main) {
+//                            videoList.removeAll { it.id == video.id }
+//                            videoAdapter.notifyDataSetChanged()
+//                        }
+//                    }
+//                }
+//
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//            }
+//        }
+//    }
+//
+//
+//    suspend fun savePrivateVideo(
+//        context: Context,
+//        sourceUri: Uri,
+//        fileName: String
+//    ): String = withContext(Dispatchers.IO) {
+//
+//        val privateDir = File(context.filesDir, "private_videos")
+//        if (!privateDir.exists()) privateDir.mkdirs()
+//
+//        val privateFile = File(privateDir, fileName)
+//
+//        context.contentResolver.openInputStream(sourceUri)?.use { input ->
+//            privateFile.outputStream().use { output ->
+//                input.copyTo(output)
+//            }
+//        } ?: throw IllegalStateException("Unable to open input stream")
+//
+//        privateFile.absolutePath
+//    }
 
 
 
@@ -706,15 +749,22 @@ class VideosFragment : Fragment() {
 
     private fun observeVideos() {
         viewModel.allPublicVideos.observe(viewLifecycleOwner) { videos ->
+
+            if (activeTab != ActiveTab.VIDEOS) return@observe
+
             videoList.clear()
             videoList.addAll(videos)
-            applySorting()   // <--- IMPORTANT
+            applySorting()
 
-            binding.videoRV.visibility = if (videos.isNotEmpty()) View.VISIBLE else View.GONE
-            binding.emptyView.visibility = if (videos.isEmpty()) View.VISIBLE else View.GONE
+            binding.videoRV.visibility =
+                if (videos.isNotEmpty()) View.VISIBLE else View.GONE
+            binding.emptyView.visibility =
+                if (videos.isEmpty()) View.VISIBLE else View.GONE
+
             binding.progressBar.visibility = View.GONE
         }
     }
+
 
     private fun observeHistoryVideos() {
         viewModel.allHistoryVideos.observe(viewLifecycleOwner) { historyVideos ->
@@ -734,12 +784,17 @@ class VideosFragment : Fragment() {
 
     private fun observePlaylistVideos() {
         viewModel.allPlaylistVideos.observe(viewLifecycleOwner) { playlistVideos ->
+
+            if (activeTab != ActiveTab.PLAYLIST) return@observe
+
             videoPlaylistList.clear()
             videoPlaylistList.addAll(playlistVideos)
             playlistVideoAdapter.notifyDataSetChanged()
+
             binding.selectedVideosRV.visibility =
                 if (playlistVideos.isNotEmpty()) View.VISIBLE else View.GONE
-            binding.emptyView.visibility = if (playlistVideos.isEmpty()) View.VISIBLE else View.GONE
+            binding.emptyView.visibility =
+                if (playlistVideos.isEmpty()) View.VISIBLE else View.GONE
 
             binding.progressBar.visibility = View.GONE
         }
@@ -882,22 +937,21 @@ class VideosFragment : Fragment() {
             }
         } else {
             if (playlistVideoAdapter.selectedItems.isNotEmpty()) {
-                val positions = playlistVideoAdapter.selectedItems.toList()  // ensure fixed order
+                val positions = playlistVideoAdapter.selectedItems.toList()
                 val source = playlistVideoAdapter.currentList
 
                 for (pos in positions) {
                     val videoId = source[pos].id
-                    Log.e("video ids pos", pos.toString())
-                    Log.e("video ids", videoId.toString())
                     viewModel.updateVideoIsPlaylist(videoId, false)
                 }
-                highlightTab(binding.tabVideos)
 
-                if (isSelectionMode)
-                    exitSelectionMode()
+                if (isSelectionMode) exitSelectionMode()
+
+                // Stay on playlist tab
+//                observePlaylistVideos()
             }
-
         }
+
     }
 
     private fun shareSelectedVideos() {
@@ -945,7 +999,7 @@ class VideosFragment : Fragment() {
     }
 
     private fun addFilesToPrivate(videoId: Long, isPrivate: Boolean, privatePath: String, videosAdapter: VideosAdapter) {
-        viewModel.updateVideoIsPrivate(videoId, isPrivate, privatePath, newContentUri = null)
+        viewModel.updateVideoIsPrivate(videoId, isPrivate, privatePath)
         Log.e("is private1", isPrivate.toString())
 
         videosAdapter.notifyDataSetChanged()

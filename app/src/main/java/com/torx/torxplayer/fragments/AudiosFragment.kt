@@ -66,7 +66,7 @@ class AudiosFragment : Fragment() {
     private lateinit var folderAdapter: AudioFolderAdapter
     private var selectedFolder: AudioFolderModel? = null
     private var AudioHistoryList = mutableListOf<AudiosModel>()
-    private var videoPlaylistList = mutableListOf<AudiosModel>()
+    private var audioPlaylistList = mutableListOf<AudiosModel>()
     private var audioList = mutableListOf<AudiosModel>()
     private lateinit var deleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private lateinit var viewModel: FilesViewModel
@@ -221,7 +221,10 @@ class AudiosFragment : Fragment() {
         }
 
         binding.mainMenu.setOnClickListener {
-            showMainMenu(it)
+            val action = AudiosFragmentDirections.actionAudiosFragmentToDownloadFragment(
+                false
+            )
+            findNavController().navigate(action)
         }
 
         binding.tabAudios.setOnClickListener { v ->
@@ -284,6 +287,8 @@ class AudiosFragment : Fragment() {
                 val audio = audioList[position]
                 val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
                     audio.uri,
+                    audio.privatePath ?: "",
+                    audioList.map { it.privatePath }.toTypedArray(),
                     audioList.map { it.title }.toTypedArray(),
                     true,
                     audioList.map { it.uri }.toTypedArray(),
@@ -308,7 +313,7 @@ class AudiosFragment : Fragment() {
 
     private fun setupPlaylistAudioAdapter() {
         playlistAudioAdapter =
-            AudioAdapter(requireContext(), videoPlaylistList, object : OptionsMenuClickListener {
+            AudioAdapter(requireContext(), audioPlaylistList, object : OptionsMenuClickListener {
                 override fun onOptionsMenuClicked(position: Int, anchorView: View) {
                     performOptionsMenuClick(position, anchorView)
                 }
@@ -316,16 +321,18 @@ class AudiosFragment : Fragment() {
                 override fun onItemClick(position: Int) {
                     val audios = playlistAudioAdapter.currentList
                     if (position !in audios.indices) return  // prevents crash
-                    val video = audios[position]
+                    val audio = audios[position]
                     val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                        video.uri,
+                        audio.uri,
+                        audio.privatePath ?: "",
+                        audioList.map { it.privatePath }.toTypedArray(),
                         audios.map { it.title }.toTypedArray(),
                         true,
                         audios.map { it.uri }.toTypedArray(),
                         position
                     )
                     findNavController().navigate(action)
-                    viewModel.updateVideoIsHistory(video.id, true)
+                    viewModel.updateVideoIsHistory(audio.uri, true)
                 }
 
                 override fun onLongItemClick(position: Int) {
@@ -344,9 +351,11 @@ class AudiosFragment : Fragment() {
         audioHistoryAdapter = AudioHistoryAdapter(
             requireContext(), AudioHistoryList,
             onItemClick = { position ->
-                val video = AudioHistoryList[position]
+                val audio = AudioHistoryList[position]
                 val action = AudiosFragmentDirections.actionAudiosFragmentToAudioPlayerFragment(
-                    video.uri,
+                    audio.uri,
+                    audio.privatePath ?: "",
+                    audioList.map { it.privatePath }.toTypedArray(),
                     AudioHistoryList.map { it.title }.toTypedArray(),
                     true,
                     AudioHistoryList.map { it.uri }.toTypedArray(),
@@ -515,7 +524,7 @@ class AudiosFragment : Fragment() {
             binding.actionShare.visibility = View.GONE
             binding.addPlaylistIcon.setImageResource(R.drawable.baseline_playlist_remove_24)
             binding.playListTxt.text = "Remove List"
-        } else{
+        } else {
             binding.actionDelete.visibility = View.VISIBLE
             binding.actionPrivate.visibility = View.VISIBLE
             binding.actionShare.visibility = View.VISIBLE
@@ -526,13 +535,15 @@ class AudiosFragment : Fragment() {
         binding.actionPrivate.setOnClickListener {
 
             Log.e("not playlist", isPlaylistView.toString())
-            val selectedVideos = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
+            val selectedAudios = audioAdapter.selectedItems.map { audioAdapter.currentList[it] }
 
-            for (video in selectedVideos) {
-                addFilesToPrivate(video.id, true, audioAdapter)
-
-                // Update local cache
-                audioList.find { it.id == video.id }?.isPrivate = true
+            if (selectedAudios.isEmpty()) return@setOnClickListener
+            onMakePrivateClicked(selectedAudios)
+            for (audio in selectedAudios) {
+//                addFilesToPrivate(video.id, true, audioAdapter)
+//
+//             Update local cache
+                audioList.find { it.id == audio.id }?.isPrivate = true
             }
 
             if (isSelectionMode)
@@ -564,8 +575,8 @@ class AudiosFragment : Fragment() {
 
     private fun observePlaylistAudios() {
         viewModel.allPlaylistAudios.observe(viewLifecycleOwner) { playlistVideos ->
-            videoPlaylistList.clear()
-            videoPlaylistList.addAll(playlistVideos)
+            audioPlaylistList.clear()
+            audioPlaylistList.addAll(playlistVideos)
             playlistAudioAdapter.notifyDataSetChanged()
             binding.selectedAudiosRV.visibility =
                 if (playlistVideos.isNotEmpty()) View.VISIBLE else View.GONE
@@ -818,8 +829,77 @@ class AudiosFragment : Fragment() {
         audioRv.layoutParams = params
     }
 
+    private val pendingPrivateAudios = mutableListOf<AudiosModel>()
+
+    private val movePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                lifecycleScope.launch {
+                    movePendingAudiosToPrivate()
+                }
+            } else {
+                pendingPrivateAudios.clear()
+            }
+        }
+
+    fun onMakePrivateClicked(audios: List<AudiosModel>) {
+
+        pendingPrivateAudios.clear()
+        pendingPrivateAudios.addAll(audios)
+
+        val uris = audios.map { it.uri.toUri() }
+
+        val pendingIntent = MediaStore.createWriteRequest(
+            requireContext().contentResolver,
+            uris
+        )
+
+        movePermissionLauncher.launch(
+            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+        )
+    }
+
+
+    private suspend fun movePendingAudiosToPrivate() =
+        withContext(Dispatchers.IO) {
+
+            val resolver = requireContext().contentResolver
+            val privateDir = requireContext()
+                .getExternalFilesDir("private_audios")!!
+            if (!privateDir.exists()) privateDir.mkdirs()
+
+            for (audio in pendingPrivateAudios) {
+
+                val sourceUri = audio.uri.toUri()
+                val destFile = File(privateDir, audio.title)
+
+                // Copy
+                resolver.openInputStream(sourceUri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                // Remove from MediaStore (permission already granted)
+                resolver.delete(sourceUri, null, null)
+
+                // Update DB (ONLY private info)
+                viewModel.updateAudioIsPrivate(
+                    audioId = audio.id,
+                    isPrivate = true,
+                    privatePath = destFile.absolutePath
+                )
+            }
+
+            pendingPrivateAudios.clear()
+
+            withContext(Dispatchers.Main) {
+                refreshVisibleList()
+            }
+        }
+
     private fun addFilesToPrivate(audioId: Long, isPrivate: Boolean, audiosAdapter: AudioAdapter) {
-        viewModel.updateAudioIsPrivate(audioId, isPrivate)
+//        viewModel.updateAudioIsPrivate(audioId, isPrivate)
         Log.e("is private1", isPrivate.toString())
 
         audiosAdapter.notifyDataSetChanged()
@@ -833,7 +913,11 @@ class AudiosFragment : Fragment() {
         popupMenu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.startVersion -> {
-                    Toast.makeText(requireContext(), "App version: ${getAppVersionName(requireContext())}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "App version: ${getAppVersionName(requireContext())}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     true
                 }
 
@@ -878,7 +962,9 @@ class AudiosFragment : Fragment() {
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.DATA, // Path to the file, use with caution on newer Android versions
             MediaStore.Audio.Media.SIZE,
-            MediaStore.Audio.Media.ALBUM_ID
+            MediaStore.Audio.Media.ALBUM_ID,
+            MediaStore.Audio.Media.MIME_TYPE,
+            MediaStore.Audio.Media.BUCKET_DISPLAY_NAME
         )
 
         // Selection for audio only
@@ -909,6 +995,8 @@ class AudiosFragment : Fragment() {
             val pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
             val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
             val albumId = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
+            val folderCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.BUCKET_DISPLAY_NAME)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
@@ -917,6 +1005,8 @@ class AudiosFragment : Fragment() {
                 val artist = cursor.getString(artistColumn)
                 val album = cursor.getString(albumColumn)
                 val duration = cursor.getLong(durationColumn)
+                val mimeType = cursor.getString(mimeCol)
+                val folder = cursor.getString(folderCol)
 
                 val contentUri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -937,7 +1027,9 @@ class AudiosFragment : Fragment() {
                         uri = contentUri.toString(),
                         path = path,
                         size = size,
-                        albumId = albumIdValue
+                        albumId = albumIdValue,
+                        mimeType = mimeType,
+                        folderName = folder
                     )
                 )
 
@@ -993,6 +1085,7 @@ class AudiosFragment : Fragment() {
 
         return folderList
     }
+
     @SuppressLint("Range")
 //    fun getAudioFoldersFromList(audioList: List<AudiosModel>): List<AudioFolderModel> {
 //
@@ -1097,7 +1190,7 @@ class AudiosFragment : Fragment() {
                     // in the same way you can implement others
                     R.id.addToPrivate -> {
                         // define
-                        viewModel.updateAudioIsPrivate(audio.id, true)
+//                        viewModel.updateAudioIsPrivate(audio.id, true)
                         audioList.removeAt(position)
                         audioAdapter.notifyItemRemoved(position)
                         Toast.makeText(

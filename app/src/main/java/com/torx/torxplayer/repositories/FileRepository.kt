@@ -49,8 +49,8 @@ class FileRepository(private val fileDao: FileDao) {
         fileDao.clearAll()
     }
 
-    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?, newContentUri: String?) {
-        fileDao.updateVideoIsPrivate(videoId, isPrivate, privatePath, newContentUri)
+    suspend fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?) {
+        fileDao.updateVideoIsPrivate(videoId, isPrivate, privatePath)
     }
 
     suspend fun updateVideoAfterUnlock(videoId: Long, newContentUri: String, newPath: String) {
@@ -61,8 +61,8 @@ class FileRepository(private val fileDao: FileDao) {
         fileDao.updateVideoIsPlaylist(videoId, isPlaylist)
     }
 
-    suspend fun updateVideoIsHistory(videoId: Long, isHistory: Boolean) {
-        fileDao.updateVideoIsHistory(videoId, isHistory)
+    suspend fun updateVideoIsHistory(contentUri: String, isHistory: Boolean) {
+        fileDao.updateVideoIsHistory(contentUri, isHistory)
     }
 
     suspend fun clearAllHistory() {
@@ -86,8 +86,8 @@ class FileRepository(private val fileDao: FileDao) {
         fileDao.insertAllAudios(audios)
     }
 
-    suspend fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean) {
-        fileDao.updateAudioIsPrivate(audioId, isPrivate)
+    suspend fun updateAudioIsPrivate(audioId: Long, isPrivate: Boolean, privatePath: String?) {
+        fileDao.updateAudioIsPrivate(audioId, isPrivate, privatePath)
     }
 
     suspend fun deleteAudio(audio: AudiosModel) {

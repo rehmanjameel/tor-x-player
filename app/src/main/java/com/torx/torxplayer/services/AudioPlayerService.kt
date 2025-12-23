@@ -3,6 +3,7 @@ package com.torx.torxplayer.services
 
 import android.app.*
 import android.content.Intent
+import android.net.Uri
 import android.os.*
 import androidx.media3.common.*
 import androidx.media3.common.util.UnstableApi
@@ -11,6 +12,7 @@ import androidx.media3.session.*
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerNotificationManager
 import com.torx.torxplayer.R
+import java.io.File
 
 @UnstableApi
 class AudioPlayerService : Service() {
@@ -72,11 +74,23 @@ class AudioPlayerService : Service() {
     fun playPlaylist(
         uris: List<String>,
         titles: List<String>,
+        privatePathList: List<String>,
         startIndex: Int
     ) {
-        playlist = uris.mapIndexed { index, uri ->
+        playlist = uris.mapIndexed { index, uriString ->
+
+            val privatePath = privatePathList.getOrNull(index).orEmpty()
+
+            val finalUri = if (privatePath.isNotEmpty()) {
+                // 🔐 Private audio (internal storage)
+                Uri.fromFile(File(privatePath))
+            } else {
+                // Public audio (content uri)
+                Uri.parse(uriString)
+            }
+
             MediaItem.Builder()
-                .setUri(uri)
+                .setUri(finalUri)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(titles.getOrNull(index) ?: "Audio")
@@ -92,6 +106,7 @@ class AudioPlayerService : Service() {
         player.prepare()
         player.play()
     }
+
 
 
 

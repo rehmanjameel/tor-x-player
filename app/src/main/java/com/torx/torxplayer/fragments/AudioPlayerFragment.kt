@@ -38,6 +38,7 @@ class AudioPlayerFragment : Fragment() {
 
     private var audioList: List<Uri> = emptyList()
     private var audioTitleList: List<String> = emptyList()
+    private var audioPrivatePathList: List<String> = emptyList()
     private var currentIndex = 0
 
     private var seekJob: Job? = null
@@ -58,6 +59,7 @@ class AudioPlayerFragment : Fragment() {
             audioService?.playPlaylist(
                 audioList.map { it.toString() },
                 audioTitleList,
+                audioPrivatePathList,
                 currentIndex
             )
 
@@ -80,6 +82,7 @@ class AudioPlayerFragment : Fragment() {
 
         audioTitleList = args.audioTitle.toList()
         audioList = args.audioUriList.map { it.toUri() }
+        audioPrivatePathList = args.audioPrivatePathList.toList()
         currentIndex = args.position
 
         setupUiListeners()
@@ -190,6 +193,7 @@ class AudioPlayerFragment : Fragment() {
             audioService?.playPlaylist(
                 audioList.map { it.toString() },
                 audioTitleList,
+                audioPrivatePathList,
                 currentIndex
             )
             updateTitle()
@@ -203,6 +207,7 @@ class AudioPlayerFragment : Fragment() {
             audioService?.playPlaylist(
                 audioList.map { it.toString() },
                 audioTitleList,
+                audioPrivatePathList,
                 currentIndex
             )
             updateTitle()

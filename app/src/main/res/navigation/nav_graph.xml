@@ -26,6 +26,9 @@
         <action
             android:id="@+id/action_audiosFragment_to_audioPlayerFragment"
             app:destination="@id/audioPlayerFragment" />
+        <action
+            android:id="@+id/action_audiosFragment_to_downloadFragment"
+            app:destination="@id/downloadFragment" />
     </fragment>
     <fragment
         android:id="@+id/privateFilesFragment"
@@ -61,6 +64,10 @@
             app:argType="string" />
 
         <argument
+            android:name="videoPrivatePathList"
+            app:argType="string[]"/>
+
+        <argument
             android:name="videoTitle"
             app:argType="string[]"/>
 
@@ -92,6 +99,14 @@
             app:argType="string"/>
 
         <argument
+            android:name="audioPrivate"
+            app:argType="string"/>
+
+        <argument
+            android:name="audioPrivatePathList"
+            app:argType="string[]"/>
+
+        <argument
             android:name="audioTitle"
             app:argType="string[]"/>
 
@@ -119,5 +134,13 @@
         <action
             android:id="@+id/action_downloadFragment_to_videosFragment"
             app:destination="@id/videosFragment" />
+        <action
+            android:id="@+id/action_downloadFragment_to_audiosFragment"
+            app:destination="@id/audiosFragment" />
+
+        <argument
+            android:name="isVideo"
+            app:argType="boolean" />
+
     </fragment>
 </navigation>

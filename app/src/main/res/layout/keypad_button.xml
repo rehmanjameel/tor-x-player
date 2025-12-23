@@ -7,6 +7,8 @@
     card_view:cardCornerRadius="50dp"
     card_view:cardElevation="8dp"
     style="@style/ClickableView"
+    android:outlineAmbientShadowColor="@color/white"
+    android:outlineSpotShadowColor="@color/white"
     card_view:cardBackgroundColor="#FFFFFF">
 
     <TextView

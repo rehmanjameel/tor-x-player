@@ -1,0 +1,148 @@
+
+B
+;
+android*http://schemas.android.com/apk/res/android,
+4
+app'http://schemas.android.com/apk/res-auto,
+navigation"x
+'http://schemas.android.com/apk/res-autostartDestination@id/videosFragment"(¿‰ø2
+ñ…¨øid/videosFragment0"c
+*http://schemas.android.com/apk/res/androidid@+id/nav_graph"(Ğ„2
+åƒ¨øid/nav_graph0*¦
+fragment"e
+*http://schemas.android.com/apk/res/androidname,com.torx.torxplayer.fragments.VideosFragment(ƒ€„"m
+*http://schemas.android.com/apk/res/androidid@+id/videosFragment"(Ğ„2
+ñ…¨øid/videosFragment0"I
+*http://schemas.android.com/apk/res/androidlabelfragment_videos(€„*¼
+³action"}
+'http://schemas.android.com/apk/res-autodestination@id/videoPlayerFragment"(¬ƒø2"
+ ì…¨øid/videoPlayerFragment0"©
+*http://schemas.android.com/apk/res/androidid1@+id/action_videosFragment_to_videoPlayerFragment"(Ğ„2;
+9Õ€¨ø/id/action_videosFragment_to_videoPlayerFragment05*°
+§action"w
+'http://schemas.android.com/apk/res-autodestination@id/downloadFragment"(¬ƒø2
+ï¨øid/downloadFragment0"£
+*http://schemas.android.com/apk/res/androidid.@+id/action_videosFragment_to_downloadFragment"(Ğ„28
+6Ô€¨ø,id/action_videosFragment_to_downloadFragment02-*¦
+fragment"e
+*http://schemas.android.com/apk/res/androidname,com.torx.torxplayer.fragments.AudiosFragment(ƒ€„"m
+*http://schemas.android.com/apk/res/androidid@+id/audiosFragment"(Ğ„2
+÷€¨øid/audiosFragment0"I
+*http://schemas.android.com/apk/res/androidlabelfragment_audios(€„*¼
+³action"}
+'http://schemas.android.com/apk/res-autodestination@id/audioPlayerFragment"(¬ƒø2"
+ ò€¨øid/audioPlayerFragment0"©
+*http://schemas.android.com/apk/res/androidid1@+id/action_audiosFragment_to_audioPlayerFragment"(Ğ„2;
+9»€¨ø/id/action_audiosFragment_to_audioPlayerFragment05*°
+§action"w
+'http://schemas.android.com/apk/res-autodestination@id/downloadFragment" (¬ƒø2
+ï¨øid/downloadFragment0"£
+*http://schemas.android.com/apk/res/androidid.@+id/action_audiosFragment_to_downloadFragment" (Ğ„28
+6¼€¨ø,id/action_audiosFragment_to_downloadFragment0 2-*ã
+Úfragment"k
+*http://schemas.android.com/apk/res/androidname2com.torx.torxplayer.fragments.PrivateFilesFragment(ƒ€„"y
+*http://schemas.android.com/apk/res/androidid@+id/privateFilesFragment"'(Ğ„2#
+!ª„¨øid/privateFilesFragment0"P
+*http://schemas.android.com/apk/res/androidlabelfragment_private_files(€„*È
+¿action"}
+'http://schemas.android.com/apk/res-autodestination@id/videoPlayerFragment"+(¬ƒø2"
+ ì…¨øid/videoPlayerFragment0"µ
+*http://schemas.android.com/apk/res/androidid7@+id/action_privateFilesFragment_to_videoPlayerFragment"+(Ğ„2A
+?Ğ€¨ø5id/action_privateFilesFragment_to_videoPlayerFragment0+5*È
+¿action"}
+'http://schemas.android.com/apk/res-autodestination@id/audioPlayerFragment".(¬ƒø2"
+ ò€¨øid/audioPlayerFragment0"µ
+*http://schemas.android.com/apk/res/androidid7@+id/action_privateFilesFragment_to_audioPlayerFragment".(Ğ„2A
+?Ï€¨ø5id/action_privateFilesFragment_to_audioPlayerFragment0.5'4*
+”fragment"j
+*http://schemas.android.com/apk/res/androidname1com.torx.torxplayer.fragments.VideoPlayerFragment(ƒ€„"w
+*http://schemas.android.com/apk/res/androidid@+id/videoPlayerFragment"5(Ğ„2"
+ ì…¨øid/videoPlayerFragment0"F
+*http://schemas.android.com/apk/res/androidlabelVideo Player(€„*²
+©action"s
+'http://schemas.android.com/apk/res-autodestination@id/videosFragment"9(¬ƒø2
+ñ…¨øid/videosFragment0"©
+*http://schemas.android.com/apk/res/androidid1@+id/action_videoPlayerFragment_to_videosFragment"9(Ğ„2;
+9Ó€¨ø/id/action_videoPlayerFragment_to_videosFragment090*Ê
+Áaction"
+'http://schemas.android.com/apk/res-autodestination@id/privateFilesFragment"<(¬ƒø2#
+!ª„¨øid/privateFilesFragment0"µ
+*http://schemas.android.com/apk/res/androidid7@+id/action_videoPlayerFragment_to_privateFilesFragment"<(Ğ„2A
+?Ò€¨ø5id/action_videoPlayerFragment_to_privateFilesFragment0<6*˜
+argument"@
+'http://schemas.android.com/apk/res-autoargTypestring(À€ø"A
+*http://schemas.android.com/apk/res/androidnamevideoUri(ƒ€„@ *œ
+“argument"@
+'http://schemas.android.com/apk/res-autoargTypestring(À€ø"E
+*http://schemas.android.com/apk/res/androidnamevideoPrivate(ƒ€„C *¦
+argument"B
+'http://schemas.android.com/apk/res-autoargTypestring[](À€ø"M
+*http://schemas.android.com/apk/res/androidnamevideoPrivatePathList(ƒ€„F"*œ
+“argument"B
+'http://schemas.android.com/apk/res-autoargTypestring[](À€ø"C
+*http://schemas.android.com/apk/res/androidname
+videoTitle(ƒ€„I"*™
+argument"A
+'http://schemas.android.com/apk/res-autoargTypeboolean(À€ø"A
+*http://schemas.android.com/apk/res/androidnameisPublic(ƒ€„L!*
+•argument"B
+'http://schemas.android.com/apk/res-autoargTypestring[](À€ø"E
+*http://schemas.android.com/apk/res/androidnamevideoUriList(ƒ€„O"*™
+argument"A
+'http://schemas.android.com/apk/res-autoargTypeinteger(À€ø"A
+*http://schemas.android.com/apk/res/androidnameposition(ƒ€„R!53*¦
+fragment"j
+*http://schemas.android.com/apk/res/androidname1com.torx.torxplayer.fragments.AudioPlayerFragment(ƒ€„"w
+*http://schemas.android.com/apk/res/androidid@+id/audioPlayerFragment"Y(Ğ„2"
+ ò€¨øid/audioPlayerFragment0"O
+*http://schemas.android.com/apk/res/androidlabelfragment_audio_player(€„*²
+©action"s
+'http://schemas.android.com/apk/res-autodestination@id/audiosFragment"](¬ƒø2
+÷€¨øid/audiosFragment0"©
+*http://schemas.android.com/apk/res/androidid1@+id/action_audioPlayerFragment_to_audiosFragment"](Ğ„2;
+9¹€¨ø/id/action_audioPlayerFragment_to_audiosFragment0]0*˜
+argument"@
+'http://schemas.android.com/apk/res-autoargTypestring(À€ø"A
+*http://schemas.android.com/apk/res/androidnameaudioUri(ƒ€„a *œ
+“argument"@
+'http://schemas.android.com/apk/res-autoargTypestring(À€ø"E
+*http://schemas.android.com/apk/res/androidnameaudioPrivate(ƒ€„d *¦
+argument"B
+'http://schemas.android.com/apk/res-autoargTypestring[](À€ø"M
+*http://schemas.android.com/apk/res/androidnameaudioPrivatePathList(ƒ€„g"*œ
+“argument"B
+'http://schemas.android.com/apk/res-autoargTypestring[](À€ø"C
+*http://schemas.android.com/apk/res/androidname
+audioTitle(ƒ€„j"*™
+argument"A
+'http://schemas.android.com/apk/res-autoargTypeboolean(À€ø"A
+*http://schemas.android.com/apk/res/androidnameisPublic(ƒ€„m!*
+•argument"B
+'http://schemas.android.com/apk/res-autoargTypestring[](À€ø"E
+*http://schemas.android.com/apk/res/androidnameaudioUriList(ƒ€„p"*™
+argument"A
+'http://schemas.android.com/apk/res-autoargTypeinteger(À€ø"A
+*http://schemas.android.com/apk/res/androidnameposition(ƒ€„s!*Ê
+Áaction"
+'http://schemas.android.com/apk/res-autodestination@id/privateFilesFragment"w(¬ƒø2#
+!ª„¨øid/privateFilesFragment0"µ
+*http://schemas.android.com/apk/res/androidid7@+id/action_audioPlayerFragment_to_privateFilesFragment"w(Ğ„2A
+?º€¨ø5id/action_audioPlayerFragment_to_privateFilesFragment0w6Y3*¼
+³fragment"g
+*http://schemas.android.com/apk/res/androidname.com.torx.torxplayer.fragments.DownloadFragment(ƒ€„"q
+*http://schemas.android.com/apk/res/androidid@+id/downloadFragment"~(Ğ„2
+ï¨øid/downloadFragment0"K
+*http://schemas.android.com/apk/res/androidlabelfragment_download(€„*¯
+¥action"t
+'http://schemas.android.com/apk/res-autodestination@id/videosFragment"‚(¬ƒø2
+ñ…¨øid/videosFragment0"¤
+*http://schemas.android.com/apk/res/androidid.@+id/action_downloadFragment_to_videosFragment"‚(Ğ„28
+6È€¨ø,id/action_downloadFragment_to_videosFragment0‚0*¯
+¥action"t
+'http://schemas.android.com/apk/res-autodestination@id/audiosFragment"…(¬ƒø2
+÷€¨øid/audiosFragment0"¤
+*http://schemas.android.com/apk/res/androidid.@+id/action_downloadFragment_to_audiosFragment"…(Ğ„28
+6Ç€¨ø,id/action_downloadFragment_to_audiosFragment0…0*™
+argument"A
+'http://schemas.android.com/apk/res-autoargTypeboolean(À€ø"@
+*http://schemas.android.com/apk/res/androidnameisVideo(ƒ€„‰!~/,

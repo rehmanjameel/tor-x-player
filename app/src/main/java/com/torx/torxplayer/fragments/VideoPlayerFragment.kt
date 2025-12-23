@@ -38,10 +38,12 @@ import androidx.navigation.fragment.navArgs
 import com.torx.torxplayer.R
 import com.torx.torxplayer.databinding.FragmentVideoPlayerBinding
 import androidx.core.net.toUri
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -60,6 +62,7 @@ class VideoPlayerFragment : Fragment() {
     private var seekJob: Job? = null
 
     private var videoList: List<Uri> = emptyList()
+    private var videoPathList: List<String> = emptyList()
     private var videoTitleList: List<String> = emptyList()
     private var currentIndex = 0
     private lateinit var seekBar: SeekBar
@@ -73,6 +76,7 @@ class VideoPlayerFragment : Fragment() {
     private lateinit var tvTotalTime: TextView
     private lateinit var binding: FragmentVideoPlayerBinding
 
+    private lateinit var viewModel: FilesViewModel
 
     // gesture tracking
     private var initialX = 0f
@@ -103,8 +107,21 @@ class VideoPlayerFragment : Fragment() {
         requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility = View.GONE
 
         videoList = args.videoUriList.map { it.toUri() }
+        videoPathList = args.videoPrivatePathList.toList()
         videoTitleList = args.videoTitle.toList()
         currentIndex = args.position
+
+        val app = requireActivity().application
+
+        viewModel = ViewModelProvider(
+            requireActivity(),
+            ViewModelProvider.AndroidViewModelFactory.getInstance(app)
+        )[FilesViewModel::class.java]
+
+        Log.e("videoList", videoList.toString())
+        Log.e("videoPathList", videoPathList.toString())
+        Log.e("videoTitleList", videoTitleList.toString())
+
 
         seekBar = binding.player.findViewById<SeekBar>(R.id.seekBar)
         tvCurrentTime = binding.player.findViewById<TextView>(R.id.tvCurrentTime)
@@ -140,11 +157,11 @@ class VideoPlayerFragment : Fragment() {
                         binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).performClick()
                     }
 
-                    if (args.isPublic) {
-                        findNavController().navigateUp()
-                    } else {
-                        findNavController().navigate(R.id.action_videoPlayerFragment_to_privateFilesFragment)
-                    }
+                    findNavController().navigateUp()
+//                    if (args.isPublic) {
+//                    } else {
+//                        findNavController().navigate(R.id.action_videoPlayerFragment_to_privateFilesFragment)
+//                    }
                     stopSeekbarUpdater()
 
                     //  Lock orientation at current state
@@ -228,13 +245,23 @@ class VideoPlayerFragment : Fragment() {
         }
 
         binding.player.findViewById<ImageView>(R.id.btnBackward).setOnClickListener {
-            val prevIndex = if (currentIndex - 1 < 0) videoList.size - 1 else currentIndex - 1
-            playVideoAt(prevIndex)
+            if (args.isPublic) {
+                val prevIndex = if (currentIndex - 1 < 0) videoList.size - 1 else currentIndex - 1
+                playVideoAt(prevIndex)
+            } else {
+                val prevIndex = if (currentIndex - 1 < 0) videoPathList.size - 1 else currentIndex - 1
+                playVideoAt(prevIndex)
+            }
         }
 
         binding.player.findViewById<ImageView>(R.id.imageViewForward).setOnClickListener {
-            val nextIndex = (currentIndex + 1) % videoList.size
-            playVideoAt(nextIndex)
+            if (args.isPublic) {
+                val nextIndex = (currentIndex + 1) % videoList.size
+                playVideoAt(nextIndex)
+            } else {
+                val nextIndex = (currentIndex + 1) % videoPathList.size
+                playVideoAt(nextIndex)
+            }
         }
 
         binding.player.findViewById<ImageView>(R.id.imageViewVolume).setOnClickListener {
@@ -292,9 +319,13 @@ class VideoPlayerFragment : Fragment() {
             val mediaItem = if (args.isPublic) {
                 // Public video → MediaStore / content uri
                 MediaItem.fromUri(args.videoUri.toUri())
+
             } else {
                 // Private video → internal storage file path
                 val file = File(args.videoPrivate)
+                Log.e("exists", file.exists().toString())
+                Log.e("length", file.length().toString())
+                Log.e("files", file.path)
                 MediaItem.fromUri(Uri.fromFile(file))
             }
 
@@ -573,19 +604,50 @@ class VideoPlayerFragment : Fragment() {
     }
 
     private fun playVideoAt(index: Int) {
-        if (index < 0 || index >= videoList.size) return
+
+        if (index < 0) return
 
         currentIndex = index
-        val videoUri = videoList[currentIndex]
-        val videoTitle = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
 
-        binding.player.findViewById<TextView>(R.id.titleText).text = videoTitle
+        val mediaItem: MediaItem
+        val videoTitle: String
+
+        if (args.isPublic) {
+            // ---------- PUBLIC VIDEO ----------
+            if (index >= videoList.size) return
+
+            val videoUri = videoList[currentIndex] // content:// uri
+            viewModel.updateVideoIsHistory(videoUri.toString(), true)
+
+            mediaItem = MediaItem.fromUri(videoUri)
+            videoTitle = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
+
+        } else {
+            // ---------- PRIVATE VIDEO ----------
+            if (index >= videoPathList.size) return
+
+            val path = videoPathList[currentIndex]
+            val file = File(path)
+
+            if (!file.exists()) {
+                // Defensive: file missing → stop
+                return
+            }
+
+            mediaItem = MediaItem.fromUri(file.toUri())
+            videoTitle = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
+        }
+
         exoPlayer?.apply {
-            setMediaItem(MediaItem.fromUri(videoUri))
+            setMediaItem(mediaItem)
             seekTo(0)
             playWhenReady = true
             prepare()
         }
+
+        binding.player
+            .findViewById<TextView>(R.id.titleText)
+            .text = videoTitle
     }
 
 

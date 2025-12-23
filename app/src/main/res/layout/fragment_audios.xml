@@ -33,7 +33,7 @@
             android:layout_height="80dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:layout_marginStart="10dp"
+            android:layout_marginStart="0dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="10dp"
             android:src="@drawable/banner"
@@ -73,7 +73,7 @@
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:layout_marginTop="10dp"
-            android:padding="5dp"
+            android:padding="10dp"
             android:src="@drawable/baseline_file_download_24"
             android:visibility="visible"
             app:tint="@color/white" />
@@ -226,7 +226,7 @@
             android:id="@+id/tabFolderLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
+            android:layout_marginStart="10dp"
             android:layout_toEndOf="@id/tabVideosLayout"
             android:orientation="vertical"
             android:padding="10dp">
@@ -252,7 +252,7 @@
             android:id="@+id/tabPlaylistLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
+            android:layout_marginStart="10dp"
             android:layout_toEndOf="@id/tabFolderLayout"
             android:orientation="vertical"
             android:padding="10dp">
