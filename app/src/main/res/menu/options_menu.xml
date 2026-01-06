@@ -8,8 +8,8 @@
 <!--        />-->
 
     <item
-        android:title="Private"
-        android:id="@+id/addToPrivate"
+        android:title="Rename"
+        android:id="@+id/renameFile"
         android:orderInCategory="1"
         />
 

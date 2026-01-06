@@ -548,7 +548,7 @@ class PrivateFilesFragment : Fragment() {
 //                    true
 //                }
 
-                R.id.addToPrivate -> {
+                R.id.renameFile -> {
 //                    viewModel.updateVideoIsPrivate(video.id, true)
                     videoList.removeAt(position)
                     videoAdapter.notifyItemRemoved(position)
@@ -690,7 +690,7 @@ class PrivateFilesFragment : Fragment() {
 //
 //                    }
                     // in the same way you can implement others
-                    R.id.addToPrivate -> {
+                    R.id.renameFile -> {
                         // define
 //                        viewModel.updateVideoIsPrivate(audio.id, true)
                         audioList.removeAt(position)

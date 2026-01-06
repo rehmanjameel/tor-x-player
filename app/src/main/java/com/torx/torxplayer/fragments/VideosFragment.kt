@@ -975,7 +975,7 @@ class VideosFragment : Fragment() {
         popupMenu.setOnMenuItemClickListener { item ->
             val video = videoAdapter.currentList[position]
             when (item.itemId) {
-                R.id.addToPrivate -> {
+                R.id.renameFile -> {
 //                    addFilesToPrivate(video.id)
                     val originalIndex = videoList.indexOfFirst { it.id == video.id }
                     if (originalIndex != -1) videoList.removeAt(originalIndex)

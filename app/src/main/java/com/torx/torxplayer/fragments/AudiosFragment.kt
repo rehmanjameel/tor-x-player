@@ -1188,7 +1188,7 @@ class AudiosFragment : Fragment() {
 //
 //                    }
                     // in the same way you can implement others
-                    R.id.addToPrivate -> {
+                    R.id.renameFile -> {
                         // define
 //                        viewModel.updateAudioIsPrivate(audio.id, true)
                         audioList.removeAt(position)
