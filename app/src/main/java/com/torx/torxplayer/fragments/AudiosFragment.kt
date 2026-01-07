@@ -894,6 +894,7 @@ class AudiosFragment : Fragment() {
             pendingPrivateAudios.clear()
 
             withContext(Dispatchers.Main) {
+                audioAdapter.notifyDataSetChanged()
                 refreshVisibleList()
             }
         }

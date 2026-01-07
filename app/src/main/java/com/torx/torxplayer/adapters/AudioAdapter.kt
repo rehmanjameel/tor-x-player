@@ -58,13 +58,14 @@ class AudioAdapter(val context: Context, private var audioList: MutableList<Audi
         Log.e("audio uri", audio.uri.toString())
 
         // Try to load album art from MediaStore
-        val albumArtUri = ContentUris.withAppendedId(
-            Uri.parse("content://media/external/audio/albumart"),
-            audio.albumId.toLong()
-        )
+//        val albumArtUri = ContentUris.withAppendedId(
+//            "content://media/external/audio/albumart".toUri(),
+//            audio.albumId.toLong()
+//        )
 
         Glide.with(context)
-            .load(albumArtUri)
+            .asBitmap()
+            .load(audio.uri)
             .transform(CenterCrop(), RoundedCorners(20))
             .error(R.drawable.audio_thumbnail)
             .into(holder.thumbnail)

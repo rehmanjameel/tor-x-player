@@ -446,6 +446,7 @@ class PrivateFilesFragment : Fragment() {
 
             val safeAlbum = sanitizeFolderName(audio.album)
             val safeName = ensureExtension(privateFile, audio.mimeType)
+            Log.e("exten", safeName)
 
             val values = ContentValues().apply {
                 put(MediaStore.Audio.Media.DISPLAY_NAME, safeName)
@@ -464,6 +465,7 @@ class PrivateFilesFragment : Fragment() {
 
             resolver.openOutputStream(uri)?.use { out ->
                 FileInputStream(privateFile).copyTo(out)
+                Log.e("output", out.toString())
             }
 
             // finalize
