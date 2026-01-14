@@ -33,7 +33,8 @@
             android:windowOptOutEdgeToEdgeEnforcement="true"
             android:windowSoftInputMode="adjustNothing"
             android:resizeableActivity="true"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             tools:targetApi="35">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

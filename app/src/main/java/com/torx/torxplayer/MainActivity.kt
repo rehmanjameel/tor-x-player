@@ -1,6 +1,8 @@
 package com.torx.torxplayer
 
 import android.Manifest
+import android.app.PictureInPictureParams
+import android.app.PictureInPictureUiState
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -8,10 +10,12 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.util.Rational
 import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -24,10 +28,17 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.messaging.FirebaseMessaging
 import com.torx.torxplayer.databinding.ActivityMainBinding
 import androidx.core.net.toUri
+import androidx.media3.exoplayer.ExoPlayer
+import com.torx.torxplayer.fragments.VideoPlayerFragment
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var navController: NavController
+
+    private var player: ExoPlayer? = null
+
+    var allowPip = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,4 +109,97 @@ class MainActivity : AppCompatActivity() {
 //        requestMediaPermissions()
     }
 
+    private var blockNextPip = false
+
+    fun blockNextPip() {
+        blockNextPip = true
+    }
+
+
+    fun attachPlayer(exoPlayer: ExoPlayer?) {
+        player = exoPlayer
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+
+        if (blockNextPip) {
+            blockNextPip = false
+            return
+        }
+
+        if (
+            allowPip &&
+            !isInPictureInPictureMode &&
+            player != null &&
+            player!!.isPlaying
+        ) {
+            enterPictureInPictureMode(
+                PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+            )
+        }
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun enterPipIfNeeded() {
+        if (player?.isPlaying == true) {
+
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .build()
+
+            enterPictureInPictureMode(params)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    override fun onPictureInPictureUiStateChanged(
+        pipState: PictureInPictureUiState
+    ) {
+        super.onPictureInPictureUiStateChanged(pipState)
+
+
+        notifyPlayerFragmentPipChanged(pipState.isTransitioningToPip)
+
+        if (!isInPictureInPictureMode) {
+            // ✅ We are BACK from PiP
+            allowPip = true
+            blockNextPip = false
+        }
+    }
+
+
+    private fun notifyPlayerFragmentPipChanged(isInPip: Boolean) {
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.navHostFragment)
+
+        navHost?.childFragmentManager?.fragments
+            ?.filterIsInstance<VideoPlayerFragment>()
+            ?.firstOrNull()
+            ?.onPipModeChanged(isInPip)
+
+    }
+
+    fun setPipAllowed(allowed: Boolean) {
+        allowPip = allowed
+    }
+
+    fun resetBlockNextPip() {
+        blockNextPip = false
+    }
+
+
+    override fun onPause() {
+        super.onPause()
+//        if (!isInPictureInPictureMode) {
+//            player?.pause()
+//        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+    }
 }

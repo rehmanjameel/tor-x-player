@@ -2,16 +2,19 @@ package com.torx.torxplayer.fragments
 
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.hardware.SensorManager
 import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Rational
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -40,9 +43,13 @@ import com.torx.torxplayer.databinding.FragmentVideoPlayerBinding
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.torx.torxplayer.MainActivity
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -137,6 +144,7 @@ class VideoPlayerFragment : Fragment() {
         setFullScreen()
         setLockScreen()
         preparePlayer()
+
         addBackForward()
         setOrientation()
         initRotationLockButton()
@@ -157,6 +165,15 @@ class VideoPlayerFragment : Fragment() {
                         binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).performClick()
                     }
 
+                    // Explicitly disable PiP on back press
+//                    disablePipTemporarily()
+                    // 🔥 Tell Activity this is BACK navigation
+                    (requireActivity() as MainActivity).blockNextPip()
+
+                    // Stop player cleanly
+                    releasePlayer()
+
+                    // Navigate back
                     findNavController().navigateUp()
 //                    if (args.isPublic) {
 //                    } else {
@@ -305,101 +322,115 @@ class VideoPlayerFragment : Fragment() {
         skipText.animate().alpha(0f).setDuration(600).start()
     }
 
+    @OptIn(UnstableApi::class)
     private fun preparePlayer() {
-        binding.player.findViewById<TextView>(R.id.titleText).text = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
 
-        exoPlayer = ExoPlayer.Builder(requireContext()).setSeekBackIncrementMs(INCREMENT_MILLIS)
+        binding.player.findViewById<TextView>(R.id.titleText).text =
+            videoTitleList.getOrNull(currentIndex) ?: "Untitled"
+
+        // 1️⃣ TrackSelector (NO resolution limits)
+        val trackSelector = DefaultTrackSelector(requireContext()).apply {
+            setParameters(
+                buildUponParameters()
+                    .setForceHighestSupportedBitrate(true)
+            )
+        }
+
+        // 2️⃣ Renderer with decoder fallback (VERY IMPORTANT)
+        val renderersFactory = DefaultRenderersFactory(requireContext())
+            .setEnableDecoderFallback(true)
+
+        // 3️⃣ Build ExoPlayer
+        exoPlayer = ExoPlayer.Builder(requireContext())
+            .setTrackSelector(trackSelector)
+            .setRenderersFactory(renderersFactory)
+            .setSeekBackIncrementMs(INCREMENT_MILLIS)
             .setSeekForwardIncrementMs(INCREMENT_MILLIS)
             .build()
+
+        (requireActivity() as MainActivity).attachPlayer(exoPlayer)
+
         exoPlayer?.playWhenReady = true
         binding.player.player = exoPlayer
 
+        // 4️⃣ MediaItem handling (Public + Private)
+        val mediaItem = if (args.isPublic) {
+            // Public MediaStore video
+            MediaItem.fromUri(args.videoUri.toUri())
+        } else {
+            // Private internal storage file
+            val file = File(args.videoPrivate)
+            require(file.exists()) { "Private video file missing" }
+            MediaItem.fromUri(file.toUri())
+        }
+
         exoPlayer?.apply {
-//            binding.player.scaleX = -1f
-            val mediaItem = if (args.isPublic) {
-                // Public video → MediaStore / content uri
-                MediaItem.fromUri(args.videoUri.toUri())
-
-            } else {
-                // Private video → internal storage file path
-                val file = File(args.videoPrivate)
-                Log.e("exists", file.exists().toString())
-                Log.e("length", file.length().toString())
-                Log.e("files", file.path)
-                MediaItem.fromUri(Uri.fromFile(file))
-            }
-
             setMediaItem(mediaItem)
-//            setMediaSource(buildMediaSource(getPath))
             seekTo(playbackPosition)
-            playWhenReady = playWhenReady
             prepare()
         }
 
+        // Detect if video is actually 4K
+        exoPlayer?.videoFormat?.let {
+            if (it.width >= 3840 && it.height >= 2160) {
+                Log.e("Player", "4K video playing")
+            }
+        }
+
+        // 5️⃣ Player Listener
         exoPlayer?.addListener(object : Player.Listener {
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                super.onIsPlayingChanged(isPlaying)
-                if (isPlaying) {
-                    binding.player.findViewById<ImageView>(R.id.custom_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
-                } else {
-                    binding.player.findViewById<ImageView>(R.id.custom_play).setImageResource(R.drawable.baseline_play_arrow_24)
+                binding.player.findViewById<ImageView>(R.id.custom_play)
+                    .setImageResource(
+                        if (isPlaying)
+                            R.drawable.baseline_pause_circle_filled_24
+                        else
+                            R.drawable.baseline_play_arrow_24
+                    )
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                when (state) {
+                    Player.STATE_ENDED -> {
+                        val nextIndex = (currentIndex + 1) % videoList.size
+                        if (nextIndex != 0 || args.isPublic) {
+                            playVideoAt(nextIndex)
+                        }
+                    }
+                    Player.STATE_READY -> isVideoStopped = false
                 }
             }
 
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                super.onPlaybackStateChanged(playbackState)
-                when (playbackState) {
-                    Player.STATE_ENDED -> {
-//                        isVideoStopped = true
-                        // Play next video automatically
-                        val nextIndex = (currentIndex + 1) % videoList.size
-                        if (nextIndex != 0 || args.isPublic) { // optional: check if only list should play
-                            playVideoAt(nextIndex)
-                        } else {
-                            isVideoStopped = true
-                        }
-//                        exoPlayer!!.seekTo(0)
-//                        exoPlayer!!.play()
-//                        binding.player.findViewById<ImageView>(R.id.exo_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
-                    }
-
-                    Player.STATE_READY -> {
-                        isVideoStopped = false
-                    }
-                    Player.STATE_BUFFERING -> {
-
-                    }
-                    Player.STATE_IDLE -> {
-
-                    }
-                }
-
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("ExoPlayer", "Playback error", error)
             }
         })
 
+        // 6️⃣ Brightness & volume setup (unchanged)
         brightness =
-            (requireActivity().window.attributes.screenBrightness * 100).toInt().coerceIn(0,100).toFloat()
+            (requireActivity().window.attributes.screenBrightness * 100)
+                .toInt()
+                .coerceIn(0, 100)
+                .toFloat()
         seekBarBrightness.progress = brightness.toInt()
 
         val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        volume = (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume).toFloat()
+        volume =
+            (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume).toFloat()
         seekBarVolume.progress = volume.toInt()
-
 
         startSeekbarUpdater()
 
-        // SeekBar interaction
+        // 7️⃣ SeekBar listener
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) exoPlayer?.seekTo(progress.toLong())
                 tvCurrentTime.text = formatTime(progress.toLong())
             }
-
             override fun onStartTrackingTouch(sb: SeekBar?) {}
             override fun onStopTrackingTouch(sb: SeekBar?) {}
         })
-
-
     }
 
     private fun startSeekbarUpdater() {
@@ -781,11 +812,64 @@ class VideoPlayerFragment : Fragment() {
         popupMenu.show()
     }
 
+    // advance pip feature
+    fun onPipModeChanged(isInPip: Boolean) {
+        if (isInPip) {
+            hideControls()
+        } else {
+            showControls()
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode)
+        binding.player.useController = !isInPictureInPictureMode
+
+        if (isInPictureInPictureMode) hideControls()
+        else showControls()
+    }
+
+    private fun hideControls() {
+        binding.player.findViewById<ImageView>(R.id.closePlayer).visibility = View.GONE
+        binding.player.findViewById<TextView>(R.id.titleText).visibility = View.GONE
+
+        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.GONE
+        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.GONE
+
+        binding.player.findViewById<LinearLayout>(R.id.brightnessLayout).visibility = View.GONE
+        binding.player.findViewById<LinearLayout>(R.id.volumeLayout).visibility = View.GONE
+        binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.GONE
+        binding.player.findViewById<ImageView>(R.id.imageViewLock).visibility = View.GONE
+    }
+
+    private fun showControls() {
+        binding.player.findViewById<ImageView>(R.id.closePlayer).visibility = View.VISIBLE
+        binding.player.findViewById<TextView>(R.id.titleText).visibility = View.VISIBLE
+
+        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.VISIBLE
+        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.VISIBLE
+
+//        binding.player.findViewById<LinearLayout>(R.id.brightnessLayout).visibility = View.VISIBLE
+//        binding.player.findViewById<LinearLayout>(R.id.volumeLayout).visibility = View.VISIBLE
+        binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.VISIBLE
+        binding.player.findViewById<ImageView>(R.id.imageViewLock).visibility = View.VISIBLE
+    }
+
     override fun onStop() {
         super.onStop()
 
         stopSeekbarUpdater()
         exoPlayer?.stop()
+
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+//            requireActivity().isInPictureInPictureMode.not()
+//        ) {
+//            val params = PictureInPictureParams.Builder()
+//                .setAspectRatio(Rational(16, 9))
+//                .build()
+//
+//            requireActivity().enterPictureInPictureMode(params)
+//        }
     }
 
     override fun onDestroy() {
@@ -797,12 +881,65 @@ class VideoPlayerFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         stopSeekbarUpdater()
-        exoPlayer?.pause()
+//        if (!requireActivity().isInPictureInPictureMode) {
+//            exoPlayer?.pause()
+//        }
+//        (requireActivity() as MainActivity).setPipAllowed(false)
+
+    }
+
+
+    private fun disablePipTemporarily() {
+        (requireActivity() as MainActivity).setPipAllowed(false)
+    }
+
+    private var playWhenReady = true
+
+    private fun releasePlayer() {
+        exoPlayer?.let { player ->
+
+            // 1️⃣ Save playback state
+            playbackPosition = player.currentPosition
+            playWhenReady = player.playWhenReady
+
+            // 2️⃣ Remove listeners
+//            player.removeListener(playerListener)
+
+            // 3️⃣ Detach from PlayerView (IMPORTANT)
+            binding.player.player = null
+
+            // 4️⃣ Release player
+            player.release()
+        }
+
+        exoPlayer = null
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         stopSeekbarUpdater()
+//        if (!requireActivity().isInPictureInPictureMode) {
+//            exoPlayer?.release()
+//            exoPlayer = null
+//        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        val activity = requireActivity() as MainActivity
+
+        // ✅ Allow PiP again
+        activity.setPipAllowed(true)
+
+        // ✅ VERY IMPORTANT: reset back-press PiP block
+        activity.resetBlockNextPip()
+
+        // ✅ Re-attach player to Activity (PiP depends on this)
+        exoPlayer?.let {
+            activity.attachPlayer(it)      // <-- REQUIRED
+            binding.player.player = it     // <-- keep this
+        }
     }
 
     companion object {
