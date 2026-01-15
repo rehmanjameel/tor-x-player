@@ -1,10 +1,13 @@
 package com.torx.torxplayer
 
 import android.Manifest
+import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.PictureInPictureUiState
+import android.app.RemoteAction
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -128,19 +131,11 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (
-            allowPip &&
-            !isInPictureInPictureMode &&
-            player != null &&
-            player!!.isPlaying
-        ) {
-            enterPictureInPictureMode(
-                PictureInPictureParams.Builder()
-                    .setAspectRatio(Rational(16, 9))
-                    .build()
-            )
+        if (allowPip && !isInPictureInPictureMode) {
+            enterPictureInPictureMode(buildPipParams())
         }
     }
+
 
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -183,6 +178,86 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    // new buttons
+    private fun createPipAction(action: String, icon: Int, title: String): RemoteAction {
+        val intent = Intent(action).setPackage(packageName)
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            action.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return RemoteAction(
+            Icon.createWithResource(this, icon),
+            title,
+            title,
+            pendingIntent
+        )
+    }
+
+    private fun buildPipParams(): PictureInPictureParams {
+        val actions = listOf(
+            createPipAction(
+                ACTION_PREVIOUS,
+                R.drawable.baseline_fast_rewind_24,
+                "Previous"
+            ),
+            createPipAction(
+                ACTION_PLAY_PAUSE,
+                if (player?.isPlaying == true)
+                    R.drawable.baseline_pause_circle_filled_24
+                else
+                    R.drawable.baseline_play_circle_24,
+                "Play/Pause"
+            ),
+            createPipAction(
+                ACTION_NEXT,
+                R.drawable.baseline_fast_forward_24,
+                "Next",
+            )
+        )
+
+        return PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(actions)
+            .build()
+    }
+
+    fun onPipPlayPause() {
+        player?.let {
+            if (it.isPlaying) it.pause() else it.play()
+            updatePipActions()
+        }
+    }
+
+    fun onPipNext() {
+        findPlayerFragment()?.playNextFromPip()
+    }
+
+    fun onPipPrevious() {
+        findPlayerFragment()?.playPreviousFromPip()
+    }
+
+    private fun findPlayerFragment(): VideoPlayerFragment? {
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.navHostFragment)
+
+        return navHost
+            ?.childFragmentManager
+            ?.fragments
+            ?.filterIsInstance<VideoPlayerFragment>()
+            ?.firstOrNull()
+    }
+
+    fun updatePipActions() {
+        if (isInPictureInPictureMode) {
+            setPictureInPictureParams(buildPipParams())
+        }
+    }
+
+////////////////////
     fun setPipAllowed(allowed: Boolean) {
         allowPip = allowed
     }
@@ -202,4 +277,12 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
     }
+
+    ///////////
+    companion object {
+        const val ACTION_PLAY_PAUSE = "pip_play_pause"
+        const val ACTION_NEXT = "pip_next"
+        const val ACTION_PREVIOUS = "pip_previous"
+    }
+//////////
 }

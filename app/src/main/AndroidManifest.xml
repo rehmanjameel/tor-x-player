@@ -55,6 +55,11 @@
             android:name=".services.AudioPlayerService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <receiver
+            android:name=".receivers.PipActionReceiver"
+            android:exported="false" />
+
     </application>
 
 

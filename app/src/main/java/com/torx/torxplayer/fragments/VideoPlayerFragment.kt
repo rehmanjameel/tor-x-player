@@ -388,6 +388,8 @@ class VideoPlayerFragment : Fragment() {
                         else
                             R.drawable.baseline_play_arrow_24
                     )
+                //new pip buttons
+                (requireActivity() as MainActivity).updatePipActions()
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -871,6 +873,30 @@ class VideoPlayerFragment : Fragment() {
 //            requireActivity().enterPictureInPictureMode(params)
 //        }
     }
+
+    // new buttons
+    fun notifyPlayerFragment(action: (VideoPlayerFragment) -> Unit) {
+        val navHost =
+            requireActivity().supportFragmentManager.findFragmentById(R.id.navHostFragment)
+
+        navHost?.childFragmentManager?.fragments
+            ?.filterIsInstance<VideoPlayerFragment>()
+            ?.firstOrNull()
+            ?.let(action)
+    }
+
+    fun playNextFromPip() {
+        val nextIndex = (currentIndex + 1) % videoList.size
+        playVideoAt(nextIndex)
+    }
+
+    fun playPreviousFromPip() {
+        val prevIndex =
+            if (currentIndex - 1 < 0) videoList.lastIndex else currentIndex - 1
+        playVideoAt(prevIndex)
+    }
+
+/////////////////
 
     override fun onDestroy() {
         super.onDestroy()
