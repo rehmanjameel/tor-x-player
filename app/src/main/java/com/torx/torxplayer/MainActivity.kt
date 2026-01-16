@@ -5,7 +5,10 @@ import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.PictureInPictureUiState
 import android.app.RemoteAction
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.net.Uri
@@ -126,28 +129,21 @@ class MainActivity : AppCompatActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
+        // 1️⃣ Block PiP explicitly when coming from BACK press
         if (blockNextPip) {
-            blockNextPip = false
+            blockNextPip = false   // reset immediately
             return
         }
 
-        if (allowPip && !isInPictureInPictureMode) {
-            enterPictureInPictureMode(buildPipParams())
-        }
-    }
+        // 2️⃣ Only enter PiP if allowed and not already in PiP
+        if (!allowPip || isInPictureInPictureMode) return
 
+        // 3️⃣ Enter PiP safely (Activity is RESUMED here)
+        val params = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .build()
 
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun enterPipIfNeeded() {
-        if (player?.isPlaying == true) {
-
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .build()
-
-            enterPictureInPictureMode(params)
-        }
+        enterPictureInPictureMode(params)
     }
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -155,7 +151,6 @@ class MainActivity : AppCompatActivity() {
         pipState: PictureInPictureUiState
     ) {
         super.onPictureInPictureUiStateChanged(pipState)
-
 
         notifyPlayerFragmentPipChanged(pipState.isTransitioningToPip)
 
@@ -165,7 +160,6 @@ class MainActivity : AppCompatActivity() {
             blockNextPip = false
         }
     }
-
 
     private fun notifyPlayerFragmentPipChanged(isInPip: Boolean) {
         val navHost =
@@ -179,57 +173,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     // new buttons
-    private fun createPipAction(action: String, icon: Int, title: String): RemoteAction {
-        val intent = Intent(action).setPackage(packageName)
-
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            action.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return RemoteAction(
-            Icon.createWithResource(this, icon),
-            title,
-            title,
-            pendingIntent
-        )
-    }
-
-    private fun buildPipParams(): PictureInPictureParams {
-        val actions = listOf(
-            createPipAction(
-                ACTION_PREVIOUS,
-                R.drawable.baseline_fast_rewind_24,
-                "Previous"
-            ),
-            createPipAction(
-                ACTION_PLAY_PAUSE,
-                if (player?.isPlaying == true)
-                    R.drawable.baseline_pause_circle_filled_24
-                else
-                    R.drawable.baseline_play_circle_24,
-                "Play/Pause"
-            ),
-            createPipAction(
-                ACTION_NEXT,
-                R.drawable.baseline_fast_forward_24,
-                "Next",
-            )
-        )
-
-        return PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(16, 9))
-            .setActions(actions)
-            .build()
-    }
 
     fun onPipPlayPause() {
-        player?.let {
-            if (it.isPlaying) it.pause() else it.play()
-            updatePipActions()
-        }
+        findPlayerFragment()?.togglePlayPauseFromPip()
     }
 
     fun onPipNext() {
@@ -251,12 +197,6 @@ class MainActivity : AppCompatActivity() {
             ?.firstOrNull()
     }
 
-    fun updatePipActions() {
-        if (isInPictureInPictureMode) {
-            setPictureInPictureParams(buildPipParams())
-        }
-    }
-
 ////////////////////
     fun setPipAllowed(allowed: Boolean) {
         allowPip = allowed
@@ -266,23 +206,98 @@ class MainActivity : AppCompatActivity() {
         blockNextPip = false
     }
 
-
-    override fun onPause() {
-        super.onPause()
-//        if (!isInPictureInPictureMode) {
-//            player?.pause()
-//        }
-    }
-
     override fun onResume() {
         super.onResume()
     }
 
+    private fun createPipIntent(action: String): PendingIntent {
+        val intent = Intent(action)
+        intent.setPackage(packageName)
+
+        return PendingIntent.getBroadcast(
+            this,
+            action.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    fun updatePipActions(isPlaying: Boolean) {
+
+//        if (!isInPictureInPictureMode) return   // 🔥 required
+
+        val playPauseIcon = if (isPlaying)
+            R.drawable.baseline_pause_circle_filled_24
+        else
+            R.drawable.baseline_play_arrow_24
+
+        val actions = listOf(
+            RemoteAction(
+                Icon.createWithResource(this, R.drawable.baseline_fast_rewind_24),
+                "Previous",
+                "Previous",
+                createPipIntent(ACTION_PIP_PREVIOUS)
+            ),
+            RemoteAction(
+                Icon.createWithResource(this, playPauseIcon),
+                if (isPlaying) "Pause" else "Play",
+                if (isPlaying) "Pause" else "Play",
+                createPipIntent(ACTION_PIP_PLAY_PAUSE)
+            ),
+            RemoteAction(
+                Icon.createWithResource(this, R.drawable.baseline_fast_forward_24),
+                "Next",
+                "Next",
+                createPipIntent(ACTION_PIP_NEXT)
+            )
+        )
+
+        val params = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(actions)
+            .build()
+
+        setPictureInPictureParams(params)
+    }
+
+    private val pipReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ACTION_PIP_PLAY_PAUSE -> onPipPlayPause()
+                ACTION_PIP_NEXT -> onPipNext()
+                ACTION_PIP_PREVIOUS -> onPipPrevious()
+            }
+        }
+    }
+
     ///////////
     companion object {
-        const val ACTION_PLAY_PAUSE = "pip_play_pause"
-        const val ACTION_NEXT = "pip_next"
-        const val ACTION_PREVIOUS = "pip_previous"
+        const val ACTION_PIP_PLAY_PAUSE = "pip_play_pause"
+        const val ACTION_PIP_NEXT = "pip_next"
+        const val ACTION_PIP_PREVIOUS = "pip_previous"
+
     }
 //////////
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    override fun onStart() {
+        super.onStart()
+
+        val filter = IntentFilter().apply {
+            addAction(ACTION_PIP_PLAY_PAUSE)
+            addAction(ACTION_PIP_NEXT)
+            addAction(ACTION_PIP_PREVIOUS)
+        }
+        registerReceiver(
+            pipReceiver,
+            filter,
+            RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(pipReceiver)
+    }
+
 }

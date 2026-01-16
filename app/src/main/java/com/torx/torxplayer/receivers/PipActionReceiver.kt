@@ -10,9 +10,9 @@ class PipActionReceiver : BroadcastReceiver() {
         val activity = context as? MainActivity ?: return
 
         when (intent.action) {
-            MainActivity.ACTION_PLAY_PAUSE -> activity.onPipPlayPause()
-            MainActivity.ACTION_NEXT -> activity.onPipNext()
-            MainActivity.ACTION_PREVIOUS -> activity.onPipPrevious()
+            MainActivity.ACTION_PIP_PLAY_PAUSE -> activity.onPipPlayPause()
+            MainActivity.ACTION_PIP_NEXT -> activity.onPipNext()
+            MainActivity.ACTION_PIP_PREVIOUS -> activity.onPipPrevious()
         }
     }
 }

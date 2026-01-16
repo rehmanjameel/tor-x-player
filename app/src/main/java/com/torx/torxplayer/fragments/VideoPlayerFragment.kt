@@ -1,23 +1,18 @@
 package com.torx.torxplayer.fragments
 
 import android.annotation.SuppressLint
-import android.app.Dialog
-import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.hardware.SensorManager
 import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.util.Rational
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.OrientationEventListener
 import android.view.View
 import android.view.ViewGroup
@@ -26,16 +21,12 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.torx.torxplayer.R
@@ -56,9 +47,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.w3c.dom.Text
 import java.io.File
-import kotlin.math.abs
 
 class VideoPlayerFragment : Fragment() {
 
@@ -84,12 +73,6 @@ class VideoPlayerFragment : Fragment() {
     private lateinit var binding: FragmentVideoPlayerBinding
 
     private lateinit var viewModel: FilesViewModel
-
-    // gesture tracking
-    private var initialX = 0f
-    private var initialY = 0f
-    private var lastX = 0f
-    private var lastY = 0f
     private var brightness: Float = 50F
     private var volume: Float = 50f
     private lateinit var audioManager: AudioManager
@@ -125,19 +108,15 @@ class VideoPlayerFragment : Fragment() {
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
 
-        Log.e("videoList", videoList.toString())
-        Log.e("videoPathList", videoPathList.toString())
-        Log.e("videoTitleList", videoTitleList.toString())
 
-
-        seekBar = binding.player.findViewById<SeekBar>(R.id.seekBar)
-        tvCurrentTime = binding.player.findViewById<TextView>(R.id.tvCurrentTime)
-        tvTotalTime = binding.player.findViewById<TextView>(R.id.tvTotalTime)
+        seekBar = binding.player.findViewById(R.id.seekBar)
+        tvCurrentTime = binding.player.findViewById(R.id.tvCurrentTime)
+        tvTotalTime = binding.player.findViewById(R.id.tvTotalTime)
         audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        seekBarVolume = binding.player.findViewById<SeekBar>(R.id.seekBarVolume)
-        seekBarBrightness = binding.player.findViewById<SeekBar>(R.id.seekBarBrightness)
-        volumeLayout = binding.player.findViewById<LinearLayout>(R.id.volumeLayout)
-        brightnessLayout = binding.player.findViewById<LinearLayout>(R.id.brightnessLayout)
+        seekBarVolume = binding.player.findViewById(R.id.seekBarVolume)
+        seekBarBrightness = binding.player.findViewById(R.id.seekBarBrightness)
+        volumeLayout = binding.player.findViewById(R.id.volumeLayout)
+        brightnessLayout = binding.player.findViewById(R.id.brightnessLayout)
         brightnessValue = binding.player.findViewById(R.id.brightnessValue)    // TextView showing "50%"
         soundValue = binding.player.findViewById(R.id.soundValue)
 
@@ -148,7 +127,6 @@ class VideoPlayerFragment : Fragment() {
         addBackForward()
         setOrientation()
         initRotationLockButton()
-//        setupSwipeControls()
 
         setBrightness(50)
         seekBarBrightness.progress = 50
@@ -165,9 +143,6 @@ class VideoPlayerFragment : Fragment() {
                         binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).performClick()
                     }
 
-                    // Explicitly disable PiP on back press
-//                    disablePipTemporarily()
-                    // 🔥 Tell Activity this is BACK navigation
                     (requireActivity() as MainActivity).blockNextPip()
 
                     // Stop player cleanly
@@ -175,10 +150,6 @@ class VideoPlayerFragment : Fragment() {
 
                     // Navigate back
                     findNavController().navigateUp()
-//                    if (args.isPublic) {
-//                    } else {
-//                        findNavController().navigate(R.id.action_videoPlayerFragment_to_privateFilesFragment)
-//                    }
                     stopSeekbarUpdater()
 
                     //  Lock orientation at current state
@@ -294,11 +265,8 @@ class VideoPlayerFragment : Fragment() {
 
         seekBarBrightness.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-//                val layoutParams = requireActivity().window.attributes
-//                layoutParams.screenBrightness = progress / 100f
-//                requireActivity().window.attributes = layoutParams
                 setBrightness(progress)
-                brightnessValue.text = "${progress.toInt()}%"
+                brightnessValue.text = "${progress}%"
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -328,7 +296,7 @@ class VideoPlayerFragment : Fragment() {
         binding.player.findViewById<TextView>(R.id.titleText).text =
             videoTitleList.getOrNull(currentIndex) ?: "Untitled"
 
-        // 1️⃣ TrackSelector (NO resolution limits)
+        // TrackSelector (NO resolution limits)
         val trackSelector = DefaultTrackSelector(requireContext()).apply {
             setParameters(
                 buildUponParameters()
@@ -336,11 +304,11 @@ class VideoPlayerFragment : Fragment() {
             )
         }
 
-        // 2️⃣ Renderer with decoder fallback (VERY IMPORTANT)
+        // Renderer with decoder fallback (VERY IMPORTANT)
         val renderersFactory = DefaultRenderersFactory(requireContext())
             .setEnableDecoderFallback(true)
 
-        // 3️⃣ Build ExoPlayer
+        // Build ExoPlayer
         exoPlayer = ExoPlayer.Builder(requireContext())
             .setTrackSelector(trackSelector)
             .setRenderersFactory(renderersFactory)
@@ -353,7 +321,7 @@ class VideoPlayerFragment : Fragment() {
         exoPlayer?.playWhenReady = true
         binding.player.player = exoPlayer
 
-        // 4️⃣ MediaItem handling (Public + Private)
+        // MediaItem handling (Public + Private)
         val mediaItem = if (args.isPublic) {
             // Public MediaStore video
             MediaItem.fromUri(args.videoUri.toUri())
@@ -377,7 +345,7 @@ class VideoPlayerFragment : Fragment() {
             }
         }
 
-        // 5️⃣ Player Listener
+        // Player Listener
         exoPlayer?.addListener(object : Player.Listener {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -389,18 +357,15 @@ class VideoPlayerFragment : Fragment() {
                             R.drawable.baseline_play_arrow_24
                     )
                 //new pip buttons
-                (requireActivity() as MainActivity).updatePipActions()
+                val activity = requireActivity() as MainActivity
+                if (activity.isInPictureInPictureMode) {
+                }
+                activity.updatePipActions(isPlaying)
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-                when (state) {
-                    Player.STATE_ENDED -> {
-                        val nextIndex = (currentIndex + 1) % videoList.size
-                        if (nextIndex != 0 || args.isPublic) {
-                            playVideoAt(nextIndex)
-                        }
-                    }
-                    Player.STATE_READY -> isVideoStopped = false
+                if (state == Player.STATE_ENDED && videoList.size > 1) {
+                    playVideoAt((currentIndex + 1) % videoList.size)
                 }
             }
 
@@ -409,7 +374,7 @@ class VideoPlayerFragment : Fragment() {
             }
         })
 
-        // 6️⃣ Brightness & volume setup (unchanged)
+        // Brightness & volume setup (unchanged)
         brightness =
             (requireActivity().window.attributes.screenBrightness * 100)
                 .toInt()
@@ -424,7 +389,7 @@ class VideoPlayerFragment : Fragment() {
 
         startSeekbarUpdater()
 
-        // 7️⃣ SeekBar listener
+        // SeekBar listener
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) exoPlayer?.seekTo(progress.toLong())
@@ -462,18 +427,6 @@ class VideoPlayerFragment : Fragment() {
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         return String.format("%02d:%02d", minutes, seconds)
-    }
-
-    //creating mediaSource
-    @OptIn(UnstableApi::class)
-    private fun buildMediaSource(url: String?): MediaSource {
-        // Create a data source factory.
-        val dataSourceFactory: DefaultHttpDataSource.Factory = DefaultHttpDataSource.Factory()
-
-        // Create a progressive media source pointing to a stream uri.
-
-        return ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(url!!))
     }
 
     private fun addBackForward() {
@@ -541,7 +494,6 @@ class VideoPlayerFragment : Fragment() {
                 }
 
                 btnRotateLock.setImageResource(R.drawable.baseline_screen_lock_rotation_24)
-//                Toast.makeText(requireContext(), "Rotation Locked", Toast.LENGTH_SHORT).show()
 
             } else {
                 //  Unlock orientation (follow sensors)
@@ -549,7 +501,6 @@ class VideoPlayerFragment : Fragment() {
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR
 
                 btnRotateLock.setImageResource(R.drawable.baseline_screen_rotation_24)
-//                Toast.makeText(requireContext(), "Rotation Unlocked", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -683,98 +634,10 @@ class VideoPlayerFragment : Fragment() {
             .text = videoTitle
     }
 
-
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupSwipeControls() {
-        binding.player.setOnTouchListener { v, event ->
-            val width = binding.player.width
-            val height = binding.player.height
-
-            when (event.action) {
-
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = event.x
-                    initialY = event.y
-                    lastX = event.x
-                    true
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.x - lastX   // horizontal movement
-                    val absDX = abs(dx)
-
-                    val horizontalThreshold = 10f
-
-                    if (absDX > horizontalThreshold) {
-
-                        // 🟦 TOP HALF → VOLUME
-                        if (initialY < height / 2f) {
-
-                            val deltaVolume = (dx / width * 100f)
-                            volume = (volume + deltaVolume).coerceIn(0f, 100f)
-
-                            setVolume(volume.toInt())
-                            seekBarVolume.progress = volume.toInt()
-
-                            soundValue.text = "${volume.toInt()}%"
-                            volumeLayout.visibility = View.VISIBLE
-
-                        } else {
-                            // 🟨 BOTTOM HALF → BRIGHTNESS
-
-                            val deltaBrightness = (dx / width * 100f)
-                            brightness = (brightness + deltaBrightness).coerceIn(0f, 100f)
-
-                            setBrightness(brightness.toInt())
-                            seekBarBrightness.progress = brightness.toInt()
-
-                            brightnessValue.text = "${brightness.toInt()}%"
-                            brightnessLayout.visibility = View.VISIBLE
-                        }
-                    }
-
-                    lastX = event.x
-                    true
-                }
-
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    brightnessLayout.visibility = View.GONE
-                    volumeLayout.visibility = View.GONE
-
-                    // Tap detection
-                    if (abs(event.x - initialX) < 10f && abs(event.y - initialY) < 10f) {
-                        v.performClick()
-                    }
-                    true
-                }
-
-                else -> false
-            }
-        }
-    }
-
-
-
-    private fun seekBy(millis: Long) {
-        exoPlayer?.let { player ->
-            val newPos = (player.currentPosition + millis)
-                .coerceIn(0L, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE)
-            player.seekTo(newPos)
-        }
-    }
-
-
     private fun setBrightness(value: Int) {
         val lp = requireActivity().window.attributes
         lp.screenBrightness = value / 100f // 0..1
         requireActivity().window.attributes = lp
-    }
-
-    private fun setVolume(value: Int) {
-        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        val newVolume = (value / 100f * maxVolume).toInt()
-        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
     }
 
     private fun speedPlayBack(view: View) {
@@ -850,9 +713,6 @@ class VideoPlayerFragment : Fragment() {
 
         binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.VISIBLE
         binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.VISIBLE
-
-//        binding.player.findViewById<LinearLayout>(R.id.brightnessLayout).visibility = View.VISIBLE
-//        binding.player.findViewById<LinearLayout>(R.id.volumeLayout).visibility = View.VISIBLE
         binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.VISIBLE
         binding.player.findViewById<ImageView>(R.id.imageViewLock).visibility = View.VISIBLE
     }
@@ -862,27 +722,13 @@ class VideoPlayerFragment : Fragment() {
 
         stopSeekbarUpdater()
         exoPlayer?.stop()
-
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-//            requireActivity().isInPictureInPictureMode.not()
-//        ) {
-//            val params = PictureInPictureParams.Builder()
-//                .setAspectRatio(Rational(16, 9))
-//                .build()
-//
-//            requireActivity().enterPictureInPictureMode(params)
-//        }
     }
 
     // new buttons
-    fun notifyPlayerFragment(action: (VideoPlayerFragment) -> Unit) {
-        val navHost =
-            requireActivity().supportFragmentManager.findFragmentById(R.id.navHostFragment)
-
-        navHost?.childFragmentManager?.fragments
-            ?.filterIsInstance<VideoPlayerFragment>()
-            ?.firstOrNull()
-            ?.let(action)
+    fun togglePlayPauseFromPip() {
+        exoPlayer?.let {
+            if (it.isPlaying) it.pause() else it.play()
+        }
     }
 
     fun playNextFromPip() {
@@ -892,7 +738,7 @@ class VideoPlayerFragment : Fragment() {
 
     fun playPreviousFromPip() {
         val prevIndex =
-            if (currentIndex - 1 < 0) videoList.lastIndex else currentIndex - 1
+            if (currentIndex - 1 < 0) videoList.size -1 else currentIndex - 1
         playVideoAt(prevIndex)
     }
 
@@ -907,16 +753,6 @@ class VideoPlayerFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         stopSeekbarUpdater()
-//        if (!requireActivity().isInPictureInPictureMode) {
-//            exoPlayer?.pause()
-//        }
-//        (requireActivity() as MainActivity).setPipAllowed(false)
-
-    }
-
-
-    private fun disablePipTemporarily() {
-        (requireActivity() as MainActivity).setPipAllowed(false)
     }
 
     private var playWhenReady = true
@@ -924,17 +760,14 @@ class VideoPlayerFragment : Fragment() {
     private fun releasePlayer() {
         exoPlayer?.let { player ->
 
-            // 1️⃣ Save playback state
+            // Save playback state
             playbackPosition = player.currentPosition
             playWhenReady = player.playWhenReady
 
-            // 2️⃣ Remove listeners
-//            player.removeListener(playerListener)
-
-            // 3️⃣ Detach from PlayerView (IMPORTANT)
+            // Detach from PlayerView (IMPORTANT)
             binding.player.player = null
 
-            // 4️⃣ Release player
+            // Release player
             player.release()
         }
 
@@ -944,10 +777,6 @@ class VideoPlayerFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         stopSeekbarUpdater()
-//        if (!requireActivity().isInPictureInPictureMode) {
-//            exoPlayer?.release()
-//            exoPlayer = null
-//        }
     }
 
     override fun onResume() {
@@ -955,13 +784,13 @@ class VideoPlayerFragment : Fragment() {
 
         val activity = requireActivity() as MainActivity
 
-        // ✅ Allow PiP again
+        // Allow PiP again
         activity.setPipAllowed(true)
 
-        // ✅ VERY IMPORTANT: reset back-press PiP block
+        // VERY IMPORTANT: reset back-press PiP block
         activity.resetBlockNextPip()
 
-        // ✅ Re-attach player to Activity (PiP depends on this)
+        // Re-attach player to Activity (PiP depends on this)
         exoPlayer?.let {
             activity.attachPlayer(it)      // <-- REQUIRED
             binding.player.player = it     // <-- keep this
