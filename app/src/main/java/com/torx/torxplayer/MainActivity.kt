@@ -1,6 +1,5 @@
 package com.torx.torxplayer
 
-import android.Manifest
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.PictureInPictureUiState
@@ -9,21 +8,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.util.Rational
 import android.view.View
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.NavController
@@ -100,7 +93,6 @@ class MainActivity : AppCompatActivity() {
             // Log and toast
             val msg = token
             Log.d("TAG", msg)
-//            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
         })
         FirebaseMessaging.getInstance().subscribeToTopic("allUsers")
 
@@ -109,10 +101,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(browserIntent)
             finish()
         }
-
-//        askNotificationPermission()
-
-//        requestMediaPermissions()
     }
 
     private var blockNextPip = false
@@ -129,16 +117,16 @@ class MainActivity : AppCompatActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        // 1️⃣ Block PiP explicitly when coming from BACK press
+        // Block PiP explicitly when coming from BACK press
         if (blockNextPip) {
             blockNextPip = false   // reset immediately
             return
         }
 
-        // 2️⃣ Only enter PiP if allowed and not already in PiP
+        // Only enter PiP if allowed and not already in PiP
         if (!allowPip || isInPictureInPictureMode) return
 
-        // 3️⃣ Enter PiP safely (Activity is RESUMED here)
+        // Enter PiP safely (Activity is RESUMED here)
         val params = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
             .build()
@@ -155,7 +143,7 @@ class MainActivity : AppCompatActivity() {
         notifyPlayerFragmentPipChanged(pipState.isTransitioningToPip)
 
         if (!isInPictureInPictureMode) {
-            // ✅ We are BACK from PiP
+            // We are BACK from PiP
             allowPip = true
             blockNextPip = false
         }

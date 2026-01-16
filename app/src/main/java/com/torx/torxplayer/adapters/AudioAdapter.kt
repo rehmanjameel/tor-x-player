@@ -1,11 +1,9 @@
 package com.torx.torxplayer.adapters
 
-import android.content.ContentUris
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -21,8 +19,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.google.android.material.card.MaterialCardView
 import com.torx.torxplayer.R
 import com.torx.torxplayer.model.AudiosModel
-import com.torx.torxplayer.OptionsMenuClickListener
-import com.torx.torxplayer.model.VideosModel
+import com.torx.torxplayer.interfaces.OptionsMenuClickListener
 
 class AudioAdapter(val context: Context, private var audioList: MutableList<AudiosModel>,
                    private var optionsMenuClickListener: OptionsMenuClickListener

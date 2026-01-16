@@ -1,4 +1,4 @@
-package com.torx.torxplayer
+package com.torx.torxplayer.interfaces
 
 import android.view.View
 

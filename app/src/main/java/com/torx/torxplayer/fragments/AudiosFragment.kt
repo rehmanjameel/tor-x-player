@@ -1,6 +1,5 @@
 package com.torx.torxplayer.fragments
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
@@ -28,27 +27,20 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.torx.torxplayer.OptionsMenuClickListener
+import com.torx.torxplayer.interfaces.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
 import com.torx.torxplayer.adapters.AudioFolderAdapter
 import com.torx.torxplayer.adapters.AudioHistoryAdapter
-import com.torx.torxplayer.adapters.VideoFolderAdapter
-import com.torx.torxplayer.adapters.VideoHistoryAdapter
-import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentAudiosBinding
 import com.torx.torxplayer.model.AudioFolderModel
 import com.torx.torxplayer.model.AudiosModel
-import com.torx.torxplayer.model.VideoFolder
-import com.torx.torxplayer.model.VideosModel
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -201,11 +193,9 @@ class AudiosFragment : Fragment() {
             requireActivity(),
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
-        Log.e("audio list", "$audioList")
 
         checkMediaPermission()
 
-//        setupRecyclerView()
         observeAudios()
         setupAudioAdapter()
         setupHistoryAdapter()
@@ -540,8 +530,6 @@ class AudiosFragment : Fragment() {
             if (selectedAudios.isEmpty()) return@setOnClickListener
             onMakePrivateClicked(selectedAudios)
             for (audio in selectedAudios) {
-//                addFilesToPrivate(video.id, true, audioAdapter)
-//
 //             Update local cache
                 audioList.find { it.id == audio.id }?.isPrivate = true
             }
@@ -922,17 +910,6 @@ class AudiosFragment : Fragment() {
                     true
                 }
 
-//                R.id.rateUs -> {
-//                    Toast.makeText(requireContext(), "Rate us coming soon", Toast.LENGTH_SHORT)
-//                        .show()
-//                    true
-//                }
-//
-//                R.id.other -> {
-//                    Toast.makeText(requireContext(), "Other coming soon", Toast.LENGTH_SHORT).show()
-//                    true
-//                }
-
                 else -> false
             }
         }
@@ -1086,24 +1063,6 @@ class AudiosFragment : Fragment() {
 
         return folderList
     }
-
-    @SuppressLint("Range")
-//    fun getAudioFoldersFromList(audioList: List<AudiosModel>): List<AudioFolderModel> {
-//
-//        val folderMap = HashMap<String, MutableList<AudiosModel>>()
-//
-//        for (audio in audioList) {
-//            val file = File(audio.path)
-//            val parent = file.parentFile ?: continue
-//            val folderName = parent.name
-//
-//            folderMap.getOrPut(folderName) { mutableListOf() }.add(audio)
-//        }
-//
-//        return folderMap.map { (folderName, list) ->
-//            AudioFolderModel(folderName, list)
-//        }
-//    }
 
 
     // this function will be called when the fragment is created when to check the permissions

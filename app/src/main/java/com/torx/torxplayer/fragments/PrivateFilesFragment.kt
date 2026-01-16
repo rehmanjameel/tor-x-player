@@ -28,7 +28,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.arconn.devicedesk.utils.AppGlobals
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.torx.torxplayer.OptionsMenuClickListener
+import com.torx.torxplayer.interfaces.OptionsMenuClickListener
 import com.torx.torxplayer.R
 import com.torx.torxplayer.adapters.AudioAdapter
 import com.torx.torxplayer.adapters.VideosAdapter
@@ -395,14 +395,6 @@ class PrivateFilesFragment : Fragment() {
 
     }
 
-    private fun addFilesToPublic(videoId: Long, isPrivate: Boolean, privatePath: String, videosAdapter: VideosAdapter) {
-//        viewModel.updateVideoIsPrivate(videoId, isPrivate, privatePath)
-        Log.e("is private1", isPrivate.toString())
-
-        videosAdapter.notifyDataSetChanged()
-        Toast.makeText(requireContext(), "Removed from private", Toast.LENGTH_SHORT).show()
-    }
-
     suspend fun restoreVideo(video: VideosModel) =
         withContext(Dispatchers.IO) {
 
@@ -509,19 +501,6 @@ class PrivateFilesFragment : Fragment() {
         }
     }
 
-
-    private fun addAudioFilesToPublic(
-        audioId: Long,
-        isPrivate: Boolean,
-        audioAdapter: AudioAdapter
-    ) {
-        viewModel.updateAudioIsPrivate(audioId, isPrivate, null)
-        Log.e("is private1", isPrivate.toString())
-
-        audioAdapter.notifyDataSetChanged()
-        Toast.makeText(requireContext(), "Removed from private", Toast.LENGTH_SHORT).show()
-    }
-
     private fun setupBackPress() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (videoAdapter.isSelectionMode) {
@@ -618,7 +597,6 @@ class PrivateFilesFragment : Fragment() {
             audioList.clear()
             audioList.addAll(audios)
 
-//            audioAdapter.notifyDataSetChanged()
             if (audios.isNotEmpty()) {
                 binding.privateFilesRV.visibility = View.VISIBLE
                 binding.emptyView.visibility = View.GONE
