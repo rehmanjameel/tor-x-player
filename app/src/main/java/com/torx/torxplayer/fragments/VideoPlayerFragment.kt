@@ -143,7 +143,7 @@ class VideoPlayerFragment : Fragment() {
                         binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).performClick()
                     }
 
-                    (requireActivity() as MainActivity).blockNextPip()
+                    (requireActivity() as MainActivity).setPipOwner(null)
 
                     // Stop player cleanly
                     releasePlayer()
@@ -364,6 +364,35 @@ class VideoPlayerFragment : Fragment() {
             }
 
             override fun onPlaybackStateChanged(state: Int) {
+//                when (state) {
+//                    Player.STATE_ENDED -> {
+////                        isVideoStopped = true
+//                        // Play next video automatically
+//                        val nextIndex = (currentIndex + 1) % videoList.size
+//                        if (nextIndex != 0 || args.isPublic) { // optional: check if only list should play
+//                            if (nextIndex != 0 || args.isPublic) {
+//                                playVideoAt(nextIndex)
+//                            } else {
+//                                isVideoStopped = true
+//                            }
+////                        exoPlayer!!.seekTo(0)
+////                        exoPlayer!!.play()
+////                        binding.player.findViewById<ImageView>(R.id.exo_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
+//                        }
+//                    }
+//
+//                        Player.STATE_READY -> {
+//                            isVideoStopped = false
+//                        }
+//                        Player.STATE_BUFFERING -> {
+//
+//                        }
+//                        Player.STATE_IDLE -> {
+//
+//                        }
+//                        Player.STATE_READY -> isVideoStopped = false
+//
+//                }
                 if (state == Player.STATE_ENDED && videoList.size > 1) {
                     playVideoAt((currentIndex + 1) % videoList.size)
                 }
@@ -677,6 +706,8 @@ class VideoPlayerFragment : Fragment() {
         popupMenu.show()
     }
 
+    private var pipClosedByUser = false
+
     // advance pip feature
     fun onPipModeChanged(isInPip: Boolean) {
         if (isInPip) {
@@ -686,13 +717,26 @@ class VideoPlayerFragment : Fragment() {
         }
     }
 
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode)
-        binding.player.useController = !isInPictureInPictureMode
+    override fun onPictureInPictureModeChanged(isInPip: Boolean) {
+        super.onPictureInPictureModeChanged(isInPip)
+        Log.e("PIP", "ENTERED = $isInPip")
 
-        if (isInPictureInPictureMode) hideControls()
-        else showControls()
+        binding.player.useController = !isInPip
+
+        if (isInPip) {
+            hideControls()
+        } else {
+            showControls()
+
+            // 🔥 Force resume playback
+            exoPlayer?.let {
+                if (!it.isPlaying && it.playbackState == Player.STATE_READY) {
+                    it.play()
+                }
+            }
+        }
     }
+
 
     private fun hideControls() {
         binding.player.findViewById<ImageView>(R.id.closePlayer).visibility = View.GONE
@@ -721,7 +765,7 @@ class VideoPlayerFragment : Fragment() {
         super.onStop()
 
         stopSeekbarUpdater()
-        exoPlayer?.stop()
+//        exoPlayer?.stop()
     }
 
     // new buttons
@@ -748,11 +792,15 @@ class VideoPlayerFragment : Fragment() {
         super.onDestroy()
         stopSeekbarUpdater()
         exoPlayer?.release()
+        exoPlayer = null
     }
 
     override fun onPause() {
         super.onPause()
         stopSeekbarUpdater()
+        if (!requireActivity().isInPictureInPictureMode) {
+            (requireActivity() as MainActivity).setPipOwner(null)
+        }
     }
 
     private var playWhenReady = true
@@ -783,17 +831,31 @@ class VideoPlayerFragment : Fragment() {
         super.onResume()
 
         val activity = requireActivity() as MainActivity
-
-        // Allow PiP again
         activity.setPipAllowed(true)
-
-        // VERY IMPORTANT: reset back-press PiP block
+        activity.setPipOwner(VideoPlayerFragment::class.java.name)
         activity.resetBlockNextPip()
 
-        // Re-attach player to Activity (PiP depends on this)
+        exoPlayer?.let { player ->
+            activity.attachPlayer(player)
+            binding.player.player = player
+
+            // 🔥 FORCE resume if PiP was closed
+            if (!player.isPlaying && player.playbackState == Player.STATE_READY) {
+                player.play()
+            }
+
+            startSeekbarUpdater()
+        }
+
+        pipClosedByUser = false
+    }
+
+
+    private fun ensurePlayback() {
         exoPlayer?.let {
-            activity.attachPlayer(it)      // <-- REQUIRED
-            binding.player.player = it     // <-- keep this
+            if (!it.isPlaying && it.playbackState == Player.STATE_READY) {
+                it.play()
+            }
         }
     }
 

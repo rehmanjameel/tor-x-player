@@ -34,6 +34,7 @@
             android:windowSoftInputMode="adjustNothing"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
+            android:launchMode="singleTask"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             tools:targetApi="35">
             <intent-filter>
@@ -56,9 +57,9 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
-        <receiver
-            android:name=".receivers.PipActionReceiver"
-            android:exported="false" />
+<!--        <receiver-->
+<!--            android:name=".receivers.PipActionReceiver"-->
+<!--            android:exported="false" />-->
 
     </application>
 

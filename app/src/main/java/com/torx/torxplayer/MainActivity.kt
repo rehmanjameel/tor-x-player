@@ -105,60 +105,47 @@ class MainActivity : AppCompatActivity() {
 
     private var blockNextPip = false
 
-    fun blockNextPip() {
-        blockNextPip = true
-    }
-
 
     fun attachPlayer(exoPlayer: ExoPlayer?) {
         player = exoPlayer
     }
 
+    private var pipOwnerTag: String? = null
+
+    fun setPipOwner(owner: String?) {
+        pipOwnerTag = owner
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        // Block PiP explicitly when coming from BACK press
-        if (blockNextPip) {
-            blockNextPip = false   // reset immediately
-            return
-        }
-
-        // Only enter PiP if allowed and not already in PiP
-        if (!allowPip || isInPictureInPictureMode) return
-
-        // Enter PiP safely (Activity is RESUMED here)
-        val params = PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(16, 9))
-            .build()
-
-        enterPictureInPictureMode(params)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    override fun onPictureInPictureUiStateChanged(
-        pipState: PictureInPictureUiState
-    ) {
-        super.onPictureInPictureUiStateChanged(pipState)
-
-        notifyPlayerFragmentPipChanged(pipState.isTransitioningToPip)
-
-        if (!isInPictureInPictureMode) {
-            // We are BACK from PiP
-            allowPip = true
-            blockNextPip = false
+        // 🔥 PiP ONLY if VideoPlayerFragment owns it
+        if (pipOwnerTag == VideoPlayerFragment::class.java.name &&
+            !isInPictureInPictureMode &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        ) {
+            enterPictureInPictureMode(
+                PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+            )
         }
     }
 
-    private fun notifyPlayerFragmentPipChanged(isInPip: Boolean) {
-        val navHost =
-            supportFragmentManager.findFragmentById(R.id.navHostFragment)
-
-        navHost?.childFragmentManager?.fragments
-            ?.filterIsInstance<VideoPlayerFragment>()
-            ?.firstOrNull()
-            ?.onPipModeChanged(isInPip)
-
-    }
+//    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+//    override fun onPictureInPictureUiStateChanged(pipState: PictureInPictureUiState) {
+//        super.onPictureInPictureUiStateChanged(pipState)
+//
+//        val isInPip = isInPictureInPictureMode // 🔥 REAL STATE
+//
+//        supportFragmentManager
+//            .findFragmentById(R.id.navHostFragment)
+//            ?.childFragmentManager
+//            ?.fragments
+//            ?.filterIsInstance<VideoPlayerFragment>()
+//            ?.firstOrNull()
+//            ?.onPipModeChanged(isInPip)
+//    }
 
     // new buttons
 
@@ -286,6 +273,38 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         unregisterReceiver(pipReceiver)
+
+        if (
+            pipOwnerTag == VideoPlayerFragment::class.java.name &&
+            !isInPictureInPictureMode &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        ) {
+            enterPictureInPictureMode(
+                PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+            )
+        }
     }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+
+        if (!hasFocus &&
+            pipOwnerTag == VideoPlayerFragment::class.java.name &&
+            !isInPictureInPictureMode &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        ) {
+            try {
+                enterPictureInPictureMode(
+                    PictureInPictureParams.Builder()
+                        .setAspectRatio(Rational(16, 9))
+                        .build()
+                )
+            } catch (e: IllegalStateException) {
+                Log.e("PIP", "Failed to enter PiP", e)
+            }
+        }
+    }
+
 
 }

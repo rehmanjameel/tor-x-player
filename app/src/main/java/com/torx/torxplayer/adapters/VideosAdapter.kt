@@ -42,9 +42,9 @@ class VideosAdapter(
         holder.size.text = "${convertBytesToMB(video.size.toLongOrNull() ?: 0L)} MB | "
 
         Glide.with(context)
-            .asBitmap()
+//            .asBitmap()
             .load(video.contentUri)
-            .frame(1000000)
+//            .frame(1000000)
             .transform(CenterCrop(), RoundedCorners(20))
             .placeholder(R.drawable.baseline_video_library_24)
             .error(R.drawable.baseline_video_library_24)
