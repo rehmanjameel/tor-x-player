@@ -538,9 +538,11 @@ class VideoPlayerFragment : Fragment() {
         if (lock) {
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.INVISIBLE
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.INVISIBLE
+            binding.player.findViewById<LinearLayout>(R.id.seekbarLayout).visibility = View.INVISIBLE
             binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.INVISIBLE
         } else {
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.VISIBLE
+            binding.player.findViewById<LinearLayout>(R.id.seekbarLayout).visibility = View.VISIBLE
             binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.VISIBLE
             binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.VISIBLE
         }

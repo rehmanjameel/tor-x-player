@@ -8,12 +8,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.util.Rational
 import android.view.View
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -119,7 +121,12 @@ class MainActivity : AppCompatActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
 
-        // 🔥 PiP ONLY if VideoPlayerFragment owns it
+        if (!isPipSupported(this)) {
+            Toast.makeText(this, "PiP not supported", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // PiP ONLY if VideoPlayerFragment owns it
         if (pipOwnerTag == VideoPlayerFragment::class.java.name &&
             !isInPictureInPictureMode &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
@@ -130,6 +137,12 @@ class MainActivity : AppCompatActivity() {
                     .build()
             )
         }
+    }
+
+    fun isPipSupported(context: Context): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                context.packageManager
+                    .hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
 //    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -208,7 +221,7 @@ class MainActivity : AppCompatActivity() {
 
         val actions = listOf(
             RemoteAction(
-                Icon.createWithResource(this, R.drawable.baseline_fast_rewind_24),
+                Icon.createWithResource(this, R.drawable.baseline_skip_previous_24),
                 "Previous",
                 "Previous",
                 createPipIntent(ACTION_PIP_PREVIOUS)
@@ -220,7 +233,7 @@ class MainActivity : AppCompatActivity() {
                 createPipIntent(ACTION_PIP_PLAY_PAUSE)
             ),
             RemoteAction(
-                Icon.createWithResource(this, R.drawable.baseline_fast_forward_24),
+                Icon.createWithResource(this, R.drawable.baseline_skip_next_24),
                 "Next",
                 "Next",
                 createPipIntent(ACTION_PIP_NEXT)
@@ -270,41 +283,41 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    override fun onStop() {
-        super.onStop()
-        unregisterReceiver(pipReceiver)
-
-        if (
-            pipOwnerTag == VideoPlayerFragment::class.java.name &&
-            !isInPictureInPictureMode &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-        ) {
-            enterPictureInPictureMode(
-                PictureInPictureParams.Builder()
-                    .setAspectRatio(Rational(16, 9))
-                    .build()
-            )
-        }
-    }
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-
-        if (!hasFocus &&
-            pipOwnerTag == VideoPlayerFragment::class.java.name &&
-            !isInPictureInPictureMode &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-        ) {
-            try {
-                enterPictureInPictureMode(
-                    PictureInPictureParams.Builder()
-                        .setAspectRatio(Rational(16, 9))
-                        .build()
-                )
-            } catch (e: IllegalStateException) {
-                Log.e("PIP", "Failed to enter PiP", e)
-            }
-        }
-    }
+//    override fun onStop() {
+//        super.onStop()
+//        unregisterReceiver(pipReceiver)
+//
+//        if (
+//            pipOwnerTag == VideoPlayerFragment::class.java.name &&
+//            !isInPictureInPictureMode &&
+//            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+//        ) {
+//            enterPictureInPictureMode(
+//                PictureInPictureParams.Builder()
+//                    .setAspectRatio(Rational(16, 9))
+//                    .build()
+//            )
+//        }
+//    }
+//    override fun onWindowFocusChanged(hasFocus: Boolean) {
+//        super.onWindowFocusChanged(hasFocus)
+//
+//        if (!hasFocus &&
+//            pipOwnerTag == VideoPlayerFragment::class.java.name &&
+//            !isInPictureInPictureMode &&
+//            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+//        ) {
+//            try {
+//                enterPictureInPictureMode(
+//                    PictureInPictureParams.Builder()
+//                        .setAspectRatio(Rational(16, 9))
+//                        .build()
+//                )
+//            } catch (e: IllegalStateException) {
+//                Log.e("PIP", "Failed to enter PiP", e)
+//            }
+//        }
+//    }
 
 
 }
