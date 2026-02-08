@@ -3,5 +3,7 @@ package com.torx.torxplayer.model
 class VideoFolder(
     val folderName: String,
     val folderPath: String,
-    val videoCount: Int
+    val videoCount: Int,
+    val thumbnailPath: String,
+    val videoPaths: List<String>
 )

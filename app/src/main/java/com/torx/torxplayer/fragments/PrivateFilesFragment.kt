@@ -1,6 +1,7 @@
 package com.torx.torxplayer.fragments
 
 import android.content.ContentValues
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -26,15 +27,17 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import com.arconn.devicedesk.utils.AppGlobals
+import com.torx.torxplayer.utils.AppGlobals
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.torx.torxplayer.interfaces.OptionsMenuClickListener
 import com.torx.torxplayer.R
+import com.torx.torxplayer.VideoPlayerActivity
 import com.torx.torxplayer.adapters.AudioAdapter
 import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentPrivateFilesBinding
 import com.torx.torxplayer.model.AudiosModel
 import com.torx.torxplayer.model.VideosModel
+import com.torx.torxplayer.services.PlaybackQueue
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -226,6 +229,7 @@ class PrivateFilesFragment : Fragment() {
         }
     }
 
+    private val appGlobal = AppGlobals()
     // videos
     private fun openPrivateVideos() {
         binding.privateFilesRV.visibility = View.VISIBLE
@@ -249,17 +253,23 @@ class PrivateFilesFragment : Fragment() {
 
                         override fun onItemClick(position: Int) {
                             val video = videoList[position]
-                            val action =
-                                PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
-                                    video.contentUri,
-                                    video.privatePath?: "",
-                                    videoList.map { it.privatePath }.toTypedArray(),
-                                    videoList.map { it.title }.toTypedArray(),
-                                    false,
-                                    videoList.map { it.contentUri }.toTypedArray(),
-                                    position
-                                )
-                            findNavController().navigate(action)
+                            PlaybackQueue.videos = videoList
+                            PlaybackQueue.currentIndex = position
+                            appGlobal.saveLoginOrBoolean("is_public", false)
+
+                            val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
+                            startActivity(intent)
+//                            val action =
+//                                PrivateFilesFragmentDirections.actionPrivateFilesFragmentToVideoPlayerFragment(
+//                                    video.contentUri,
+//                                    video.privatePath?: "",
+//                                    videoList.map { it.privatePath }.toTypedArray(),
+//                                    videoList.map { it.title }.toTypedArray(),
+//                                    false,
+//                                    videoList.map { it.contentUri }.toTypedArray(),
+//                                    position
+//                                )
+//                            findNavController().navigate(action)
                         }
 
                         override fun onLongItemClick(position: Int) {

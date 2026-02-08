@@ -1,10 +1,11 @@
-package com.arconn.devicedesk.utils
+package com.torx.torxplayer.utils
 
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 
 @SuppressLint("CommitPrefEdits", "StaticFieldLeak")
 class AppGlobals : Application() {
@@ -33,37 +34,37 @@ class AppGlobals : Application() {
         val myContext: Context = applicationContext()
         Log.e("Check ", "yes")
 
-        sharedPref = myContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPref = myContext.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
     }
 
 
-    fun saveString(KEY_NAME: String, text: String) {
+    fun saveString(KEY_NAME: String, text: String?) {
 
         Log.e("Check ", "Here")
 
-        val editor: SharedPreferences.Editor = sharedPref.edit()
+        sharedPref.edit {
 
-        editor.putString(KEY_NAME, text)
+            putString(KEY_NAME, text)
 
-        editor.apply()
+        }
     }
 
     fun saveInt(KEY_NAME: String, value: Int) {
-        val editor: SharedPreferences.Editor = sharedPref.edit()
+        sharedPref.edit {
 
-        editor.putInt(KEY_NAME, value)
+            putInt(KEY_NAME, value)
 
-        editor.apply()
+        }
     }
 
     fun saveLoginOrBoolean(value: String, status: Boolean) {
 
-        val editor: SharedPreferences.Editor = sharedPref.edit()
+        sharedPref.edit {
 
-        editor.putBoolean(value, status)
+            putBoolean(value, status)
 
-        editor.apply()
+        }
     }
 
     fun getValueString(KEY_NAME: String): String? {
@@ -85,8 +86,19 @@ class AppGlobals : Application() {
     }
 
     fun logoutOrClearSharedPreference() {
-        val editor: SharedPreferences.Editor = sharedPref.edit()
-        editor.clear().apply()
+        sharedPref.edit {
+            clear()
+        }
+    }
+
+    fun saveStringList(key: String, list: Array<String?>) {
+        sharedPref.edit {
+            putStringSet(key, list.toSet())
+        }
+    }
+
+    fun getValueStringList(key: String): Array<String> {
+        return sharedPref.getStringSet(key, emptySet())?.toTypedArray() ?: emptyArray()
     }
 
 }

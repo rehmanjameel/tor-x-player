@@ -35,17 +35,24 @@ class VideoFolderAdapter(private val context: Context,
         holder.videoCount.text = "${folder.videoCount} videos"
 
         // Load thumbnail using Glide (fast)
-        val firstVideoFile = File(folder.folderPath).listFiles()?.firstOrNull {
-            it.extension.lowercase() in listOf("mp4", "mkv", "mov", "avi")
-        }
+//        val firstVideoFile = File(folder.folderPath).listFiles()?.firstOrNull {
+//            it.extension.lowercase() in listOf("mp4", "mkv", "mov", "avi")
+//        }
+//
+//        if (firstVideoFile != null) {
+//            Glide.with(context)
+//                .load(firstVideoFile.path)
+//                .centerCrop()
+//                .placeholder(R.drawable.baseline_video_library_24)
+//                .into(holder.folderThumbnail)
+//        }
 
-        if (firstVideoFile != null) {
-            Glide.with(context)
-                .load(firstVideoFile.path)
-                .centerCrop()
-                .placeholder(R.drawable.baseline_video_library_24)
-                .into(holder.folderThumbnail)
-        }
+        Glide.with(context)
+            .load(folder.thumbnailPath)
+            .centerCrop()
+            .placeholder(R.drawable.baseline_video_library_24)
+            .into(holder.folderThumbnail)
+
 
         holder.itemView.setOnClickListener {
             onFolderClick(folder)

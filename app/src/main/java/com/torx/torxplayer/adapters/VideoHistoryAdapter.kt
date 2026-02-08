@@ -16,6 +16,10 @@ import com.torx.torxplayer.model.VideosModel
 class VideoHistoryAdapter(val context: Context, var videos: MutableList<VideosModel>,
     val onItemClick: (position: Int) -> Unit)
     : RecyclerView.Adapter<VideoHistoryAdapter.VideoViewHolder>() {
+
+    val currentList: List<VideosModel>
+        get() = videos
+
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int

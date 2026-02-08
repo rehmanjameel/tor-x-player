@@ -4,21 +4,22 @@
 
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <!-- For older Android versions (API 32 and below) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" /> <!-- For older Android versions (API 32 and below) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
-        android:name="com.arconn.devicedesk.utils.AppGlobals"
+        android:name=".utils.AppGlobals"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -28,14 +29,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TorXplayer">
         <activity
+            android:name=".VideoPlayerActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="true"
-            android:windowOptOutEdgeToEdgeEnforcement="true"
-            android:windowSoftInputMode="adjustNothing"
+            android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:launchMode="singleTask"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:windowOptOutEdgeToEdgeEnforcement="true"
+            android:windowSoftInputMode="adjustNothing"
             tools:targetApi="35">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -51,17 +55,14 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-
         <service
             android:name=".services.AudioPlayerService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
-
-<!--        <receiver-->
-<!--            android:name=".receivers.PipActionReceiver"-->
-<!--            android:exported="false" />-->
-
+        <service
+            android:name=".services.FloatingPlayerService"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
     </application>
-
 
 </manifest>

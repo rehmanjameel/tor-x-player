@@ -2,35 +2,41 @@ package com.torx.torxplayer
 
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
-import android.app.PictureInPictureUiState
 import android.app.RemoteAction
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.PixelFormat
 import android.graphics.drawable.Icon
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.util.Rational
 import android.view.View
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavController
+import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.messaging.FirebaseMessaging
 import com.torx.torxplayer.databinding.ActivityMainBinding
-import androidx.core.net.toUri
-import androidx.media3.exoplayer.ExoPlayer
 import com.torx.torxplayer.fragments.VideoPlayerFragment
+import com.torx.torxplayer.services.FloatingPlayerService
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -103,192 +109,31 @@ class MainActivity : AppCompatActivity() {
             startActivity(browserIntent)
             finish()
         }
+
+        handleOverlayIntent(intent)
     }
 
-    private var blockNextPip = false
-
-
-    fun attachPlayer(exoPlayer: ExoPlayer?) {
-        player = exoPlayer
-    }
-
-    private var pipOwnerTag: String? = null
-
-    fun setPipOwner(owner: String?) {
-        pipOwnerTag = owner
-    }
-
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-
-        if (!isPipSupported(this)) {
-            Toast.makeText(this, "PiP not supported", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        // PiP ONLY if VideoPlayerFragment owns it
-        if (pipOwnerTag == VideoPlayerFragment::class.java.name &&
-            !isInPictureInPictureMode &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-        ) {
-            enterPictureInPictureMode(
-                PictureInPictureParams.Builder()
-                    .setAspectRatio(Rational(16, 9))
-                    .build()
-            )
-        }
-    }
-
-    fun isPipSupported(context: Context): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                context.packageManager
-                    .hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
-    }
-
-//    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-//    override fun onPictureInPictureUiStateChanged(pipState: PictureInPictureUiState) {
-//        super.onPictureInPictureUiStateChanged(pipState)
+//    private var blockNextPip = false
 //
-//        val isInPip = isInPictureInPictureMode // 🔥 REAL STATE
 //
-//        supportFragmentManager
-//            .findFragmentById(R.id.navHostFragment)
-//            ?.childFragmentManager
-//            ?.fragments
-//            ?.filterIsInstance<VideoPlayerFragment>()
-//            ?.firstOrNull()
-//            ?.onPipModeChanged(isInPip)
+//    fun attachPlayer(exoPlayer: ExoPlayer?) {
+//        player = exoPlayer
 //    }
-
-    // new buttons
-
-    fun onPipPlayPause() {
-        findPlayerFragment()?.togglePlayPauseFromPip()
-    }
-
-    fun onPipNext() {
-        findPlayerFragment()?.playNextFromPip()
-    }
-
-    fun onPipPrevious() {
-        findPlayerFragment()?.playPreviousFromPip()
-    }
-
-    private fun findPlayerFragment(): VideoPlayerFragment? {
-        val navHost =
-            supportFragmentManager.findFragmentById(R.id.navHostFragment)
-
-        return navHost
-            ?.childFragmentManager
-            ?.fragments
-            ?.filterIsInstance<VideoPlayerFragment>()
-            ?.firstOrNull()
-    }
-
-////////////////////
-    fun setPipAllowed(allowed: Boolean) {
-        allowPip = allowed
-    }
-
-    fun resetBlockNextPip() {
-        blockNextPip = false
-    }
-
-    override fun onResume() {
-        super.onResume()
-    }
-
-    private fun createPipIntent(action: String): PendingIntent {
-        val intent = Intent(action)
-        intent.setPackage(packageName)
-
-        return PendingIntent.getBroadcast(
-            this,
-            action.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
-    fun updatePipActions(isPlaying: Boolean) {
-
-//        if (!isInPictureInPictureMode) return   // 🔥 required
-
-        val playPauseIcon = if (isPlaying)
-            R.drawable.baseline_pause_circle_filled_24
-        else
-            R.drawable.baseline_play_arrow_24
-
-        val actions = listOf(
-            RemoteAction(
-                Icon.createWithResource(this, R.drawable.baseline_skip_previous_24),
-                "Previous",
-                "Previous",
-                createPipIntent(ACTION_PIP_PREVIOUS)
-            ),
-            RemoteAction(
-                Icon.createWithResource(this, playPauseIcon),
-                if (isPlaying) "Pause" else "Play",
-                if (isPlaying) "Pause" else "Play",
-                createPipIntent(ACTION_PIP_PLAY_PAUSE)
-            ),
-            RemoteAction(
-                Icon.createWithResource(this, R.drawable.baseline_skip_next_24),
-                "Next",
-                "Next",
-                createPipIntent(ACTION_PIP_NEXT)
-            )
-        )
-
-        val params = PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(16, 9))
-            .setActions(actions)
-            .build()
-
-        setPictureInPictureParams(params)
-    }
-
-    private val pipReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                ACTION_PIP_PLAY_PAUSE -> onPipPlayPause()
-                ACTION_PIP_NEXT -> onPipNext()
-                ACTION_PIP_PREVIOUS -> onPipPrevious()
-            }
-        }
-    }
-
-    ///////////
-    companion object {
-        const val ACTION_PIP_PLAY_PAUSE = "pip_play_pause"
-        const val ACTION_PIP_NEXT = "pip_next"
-        const val ACTION_PIP_PREVIOUS = "pip_previous"
-
-    }
-//////////
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    override fun onStart() {
-        super.onStart()
-
-        val filter = IntentFilter().apply {
-            addAction(ACTION_PIP_PLAY_PAUSE)
-            addAction(ACTION_PIP_NEXT)
-            addAction(ACTION_PIP_PREVIOUS)
-        }
-        registerReceiver(
-            pipReceiver,
-            filter,
-            RECEIVER_NOT_EXPORTED
-        )
-    }
-
-//    override fun onStop() {
-//        super.onStop()
-//        unregisterReceiver(pipReceiver)
 //
-//        if (
-//            pipOwnerTag == VideoPlayerFragment::class.java.name &&
+//    private var pipOwnerTag: String? = null
+//
+//    fun setPipOwner(owner: String?) {
+//        pipOwnerTag = owner
+//    }
+//
+//    override fun onUserLeaveHint() {
+//        super.onUserLeaveHint()
+//
+//        // Only VideoPlayerFragment owns PiP
+//        if (pipOwnerTag != VideoPlayerFragment::class.java.name) return
+//
+//        // PiP ONLY if VideoPlayerFragment owns it
+//        if (pipOwnerTag == VideoPlayerFragment::class.java.name &&
 //            !isInPictureInPictureMode &&
 //            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
 //        ) {
@@ -299,25 +144,158 @@ class MainActivity : AppCompatActivity() {
 //            )
 //        }
 //    }
-//    override fun onWindowFocusChanged(hasFocus: Boolean) {
-//        super.onWindowFocusChanged(hasFocus)
 //
-//        if (!hasFocus &&
-//            pipOwnerTag == VideoPlayerFragment::class.java.name &&
-//            !isInPictureInPictureMode &&
-//            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-//        ) {
-//            try {
-//                enterPictureInPictureMode(
-//                    PictureInPictureParams.Builder()
-//                        .setAspectRatio(Rational(16, 9))
-//                        .build()
-//                )
-//            } catch (e: IllegalStateException) {
-//                Log.e("PIP", "Failed to enter PiP", e)
+//    fun isPipSupported(context: Context): Boolean {
+//        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+//                context.packageManager
+//                    .hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+//    }
+//
+//    // new buttons
+//
+//    fun onPipPlayPause() {
+//        findPlayerFragment()?.togglePlayPauseFromPip()
+//    }
+//
+//    fun onPipNext() {
+//        findPlayerFragment()?.playNextFromPip()
+//    }
+//
+//    fun onPipPrevious() {
+//        findPlayerFragment()?.playPreviousFromPip()
+//    }
+//
+//    private fun findPlayerFragment(): VideoPlayerFragment? {
+//        val navHost =
+//            supportFragmentManager.findFragmentById(R.id.navHostFragment)
+//
+//        return navHost
+//            ?.childFragmentManager
+//            ?.fragments
+//            ?.filterIsInstance<VideoPlayerFragment>()
+//            ?.firstOrNull()
+//    }
+//
+//////////////////////
+//    fun setPipAllowed(allowed: Boolean) {
+//        allowPip = allowed
+//    }
+//
+//    fun resetBlockNextPip() {
+//        blockNextPip = false
+//    }
+//
+//    override fun onResume() {
+//        super.onResume()
+//    }
+//
+//    private fun createPipIntent(action: String): PendingIntent {
+//        val intent = Intent(action)
+//        intent.setPackage(packageName)
+//
+//        return PendingIntent.getBroadcast(
+//            this,
+//            action.hashCode(),
+//            intent,
+//            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+//        )
+//    }
+//
+//    fun updatePipActions(isPlaying: Boolean) {
+//
+////        if (!isInPictureInPictureMode) return   // 🔥 required
+//
+//        val playPauseIcon = if (isPlaying)
+//            R.drawable.baseline_pause_circle_filled_24
+//        else
+//            R.drawable.baseline_play_arrow_24
+//
+//        val actions = listOf(
+//            RemoteAction(
+//                Icon.createWithResource(this, R.drawable.baseline_skip_previous_24),
+//                "Previous",
+//                "Previous",
+//                createPipIntent(ACTION_PIP_PREVIOUS)
+//            ),
+//            RemoteAction(
+//                Icon.createWithResource(this, playPauseIcon),
+//                if (isPlaying) "Pause" else "Play",
+//                if (isPlaying) "Pause" else "Play",
+//                createPipIntent(ACTION_PIP_PLAY_PAUSE)
+//            ),
+//            RemoteAction(
+//                Icon.createWithResource(this, R.drawable.baseline_skip_next_24),
+//                "Next",
+//                "Next",
+//                createPipIntent(ACTION_PIP_NEXT)
+//            )
+//        )
+//
+//        val params = PictureInPictureParams.Builder()
+//            .setAspectRatio(Rational(16, 9))
+//            .setActions(actions)
+//            .build()
+//
+//        setPictureInPictureParams(params)
+//    }
+//
+//    private val pipReceiver = object : BroadcastReceiver() {
+//        override fun onReceive(context: Context?, intent: Intent?) {
+//            when (intent?.action) {
+//                ACTION_PIP_PLAY_PAUSE -> onPipPlayPause()
+//                ACTION_PIP_NEXT -> onPipNext()
+//                ACTION_PIP_PREVIOUS -> onPipPrevious()
 //            }
 //        }
 //    }
+//
+//    ///////////
+//    companion object {
+//        const val ACTION_PIP_PLAY_PAUSE = "pip_play_pause"
+//        const val ACTION_PIP_NEXT = "pip_next"
+//        const val ACTION_PIP_PREVIOUS = "pip_previous"
+//
+//    }
+//////////
 
+//    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+//    override fun onStart() {
+//        super.onStart()
+//
+//        val filter = IntentFilter().apply {
+//            addAction(ACTION_PIP_PLAY_PAUSE)
+//            addAction(ACTION_PIP_NEXT)
+//            addAction(ACTION_PIP_PREVIOUS)
+//        }
+//        registerReceiver(
+//            pipReceiver,
+//            filter,
+//            RECEIVER_NOT_EXPORTED
+//        )
+//    }
+
+
+    ///// overlay permission and pip //////
+
+
+
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.let { handleOverlayIntent(it) }
+    }
+
+    private fun handleOverlayIntent(intent: Intent) {
+        if (intent.getBooleanExtra("OPEN_PLAYER", false)) {
+
+            val navController =
+                findNavController(R.id.navHostFragment)
+
+            // Avoid duplicate navigation
+            if (navController.currentDestination?.id != R.id.videoPlayerFragment) {
+                navController.navigate(R.id.videoPlayerFragment)
+            }
+        }
+    }
 
 }

@@ -36,12 +36,16 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.torx.torxplayer.interfaces.OptionsMenuClickListener
 import com.torx.torxplayer.R
+import com.torx.torxplayer.VideoPlayerActivity
 import com.torx.torxplayer.adapters.VideoFolderAdapter
 import com.torx.torxplayer.adapters.VideoHistoryAdapter
 import com.torx.torxplayer.adapters.VideosAdapter
 import com.torx.torxplayer.databinding.FragmentVideosBinding
 import com.torx.torxplayer.model.VideoFolder
 import com.torx.torxplayer.model.VideosModel
+import com.torx.torxplayer.services.OverlayPipManager
+import com.torx.torxplayer.services.PlaybackQueue
+import com.torx.torxplayer.utils.AppGlobals
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,6 +73,7 @@ class VideosFragment : Fragment() {
     private lateinit var privateDeleteRequestLauncher: ActivityResultLauncher<IntentSenderRequest>
     private val pendingPrivateDeletes = mutableListOf<VideosModel>()
 
+    private val appGlobal  = AppGlobals()
     private var isSelectionMode = false
 
     enum class ActiveTab {
@@ -86,7 +91,7 @@ class VideosFragment : Fragment() {
     ): View {
         binding = FragmentVideosBinding.inflate(inflater, container, false)
 
-        setupRecyclerView()
+//        setupRecyclerView()
         setupSearch()
         setupDonationClick()
         setupDeleteLauncher()
@@ -127,7 +132,6 @@ class VideosFragment : Fragment() {
             showSection(video = false, folder = true, selected = false, showBack = false)
 
             setupFolderBack()
-
         }
 
         binding.swapIcon.setOnClickListener {
@@ -152,17 +156,34 @@ class VideosFragment : Fragment() {
         videoHistoryAdapter = VideoHistoryAdapter(
             requireContext(), videoHistoryList,
             onItemClick = { position ->
-                val video = videoHistoryList[position]
-                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                    video.contentUri,
-                    video.privatePath?: "",
-                    videoList.map { it.privatePath }.toTypedArray(),
-                    videoHistoryList.map { it.title }.toTypedArray(),
-                    true,
-                    videoHistoryList.map { it.contentUri }.toTypedArray(),
-                    position
-                )
-                findNavController().navigate(action)
+//                val video = videoHistoryList[position]
+                val videos = videoHistoryAdapter.currentList
+                PlaybackQueue.videos = videos
+                PlaybackQueue.currentIndex = position
+
+                // THEN: kill PiP completely
+                OverlayPipManager.stop(requireContext())
+                OverlayPipManager.sharedPlayer?.apply {
+                    stop()
+                    clearMediaItems()
+                }
+                OverlayPipManager.sharedPlayer = null
+                OverlayPipManager.isFromOverlay = false
+                OverlayPipManager.lastPosition = 0L
+
+                // THEN: open player
+                val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
+                startActivity(intent)
+//                val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+//                    video.contentUri,
+//                    video.privatePath?: "",
+//                    videoList.map { it.privatePath }.toTypedArray(),
+//                    videoHistoryList.map { it.title }.toTypedArray(),
+//                    true,
+//                    videoHistoryList.map { it.contentUri }.toTypedArray(),
+//                    position
+//                )
+//                findNavController().navigate(action)
             })
         binding.historyRV.adapter = videoHistoryAdapter
     }
@@ -176,18 +197,25 @@ class VideosFragment : Fragment() {
 
                 override fun onItemClick(position: Int) {
                     val videos = videoAdapter.currentList
-                    if (position !in videos.indices) return  // prevents crash
+                    if (position !in videos.indices) return
                     val video = videos[position]
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                        video.contentUri,
-                        video.privatePath?: "",
-                        videoList.map { it.privatePath }.toTypedArray(),
-                        videos.map { it.title }.toTypedArray(),
-                        true,
-                        videos.map { it.contentUri }.toTypedArray(),
-                        position
-                    )
-                    findNavController().navigate(action)
+                    // FIRST: define new playback
+                    PlaybackQueue.videos = videos
+                    PlaybackQueue.currentIndex = position
+
+                    // THEN: kill PiP completely
+                    OverlayPipManager.stop(requireContext())
+                    OverlayPipManager.sharedPlayer?.apply {
+                        stop()
+                        clearMediaItems()
+                    }
+                    OverlayPipManager.sharedPlayer = null
+                    OverlayPipManager.isFromOverlay = false
+                    OverlayPipManager.lastPosition = 0L
+
+                    // THEN: open player
+                    val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
+                    startActivity(intent)
                     viewModel.updateVideoIsHistory(video.contentUri, true)
                 }
 
@@ -224,16 +252,34 @@ class VideosFragment : Fragment() {
                     val videos = playlistVideoAdapter.currentList
                     if (position !in videos.indices) return  // prevents crash
                     val video = videos[position]
-                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
-                        video.contentUri,
-                        video.privatePath?: "",
-                        videoList.map { it.privatePath }.toTypedArray(),
-                        videos.map { it.title }.toTypedArray(),
-                        true,
-                        videos.map { it.contentUri }.toTypedArray(),
-                        position
-                    )
-                    findNavController().navigate(action)
+
+                    // FIRST: define new playback
+                    PlaybackQueue.videos = videos
+                    PlaybackQueue.currentIndex = position
+
+                    // THEN: kill PiP completely
+                    OverlayPipManager.stop(requireContext())
+                    OverlayPipManager.sharedPlayer?.apply {
+                        stop()
+                        clearMediaItems()
+                    }
+                    OverlayPipManager.sharedPlayer = null
+                    OverlayPipManager.isFromOverlay = false
+                    OverlayPipManager.lastPosition = 0L
+
+                    // THEN: open player
+                    val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
+                    startActivity(intent)
+//                    val action = VideosFragmentDirections.actionVideosFragmentToVideoPlayerFragment(
+//                        video.contentUri,
+//                        video.privatePath?: "",
+//                        videoList.map { it.privatePath }.toTypedArray(),
+//                        videos.map { it.title }.toTypedArray(),
+//                        true,
+//                        videos.map { it.contentUri }.toTypedArray(),
+//                        position
+//                    )
+//                    findNavController().navigate(action)
                     viewModel.updateVideoIsHistory(video.contentUri, true)
                 }
 
@@ -374,9 +420,10 @@ class VideosFragment : Fragment() {
 
     private fun openFolderVideos(folder: VideoFolder) {
 
-        val videosInFolder = videoList.filter {
-            it.path.startsWith(folder.folderPath) && !it.isPrivate
-        }.toMutableList()
+        val videosInFolder = videoList
+            .filter { it.path.startsWith(folder.folderPath) && !it.isPrivate }
+            .sortedByDescending { it.dateAdded }
+            .toMutableList()
 
         videoAdapter.filterList(videosInFolder)
 
@@ -1142,51 +1189,43 @@ class VideosFragment : Fragment() {
     }
 
     fun getVideoFolders(context: Context): List<VideoFolder> {
-        val folderMap = HashMap<String, MutableList<String>>() // folderPath -> list of videos
+        val folderMap = LinkedHashMap<String, MutableList<String>>()
 
         val projection = arrayOf(
-            MediaStore.Video.Media._ID,
             MediaStore.Video.Media.DATA
         )
 
-        val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         val sortOrder = MediaStore.Video.Media.DATE_ADDED + " DESC"
 
-        val cursor = context.contentResolver.query(
-            uri, projection, null, null, sortOrder
-        )
+        context.contentResolver.query(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            sortOrder
+        )?.use { cursor ->
+            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
 
-        cursor?.use {
-            val dataCol = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+            while (cursor.moveToNext()) {
+                val fullPath = cursor.getString(dataCol)
+                val folderPath = File(fullPath).parent ?: continue
 
-            while (it.moveToNext()) {
-                val fullPath = it.getString(dataCol)
-
-                // Extract folder path
-                val file = File(fullPath)
-                val folder = file.parent ?: continue
-
-                if (!folderMap.containsKey(folder)) {
-                    folderMap[folder] = mutableListOf()
-                }
-                folderMap[folder]?.add(fullPath)
+                folderMap.getOrPut(folderPath) { mutableListOf() }
+                    .add(fullPath) // 🔥 ORDER PRESERVED
             }
         }
 
-        // Convert folderMap to ArrayList of VideoFolder
-        val folderList = ArrayList<VideoFolder>()
-        for ((folderPath, videos) in folderMap) {
-            folderList.add(
-                VideoFolder(
-                    folderName = File(folderPath).name,
-                    folderPath = folderPath,
-                    videoCount = videos.size
-                )
+        return folderMap.map { (folderPath, videos) ->
+            VideoFolder(
+                folderName = File(folderPath).name,
+                folderPath = folderPath,
+                videoCount = videos.size,
+                thumbnailPath = videos.first(), // newest
+                videoPaths = videos              // 🔥 ordered list
             )
         }
-
-        return folderList
     }
+
 
     private fun getAppVersionName(context: Context): String? {
         return try {
@@ -1198,6 +1237,7 @@ class VideosFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        setupRecyclerView()
         if (hasVideoPermission(requireContext())) {
             loadMediaFilesIntoDB()
         }

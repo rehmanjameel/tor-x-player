@@ -1,48 +1,51 @@
-package com.torx.torxplayer.fragments
+package com.torx.torxplayer
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.hardware.SensorManager
 import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
-import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
 import android.view.OrientationEventListener
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.media3.common.MediaItem
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
-import com.torx.torxplayer.R
-import com.torx.torxplayer.databinding.FragmentVideoPlayerBinding
 import androidx.core.net.toUri
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.torx.torxplayer.databinding.ActivityVideoPlayerBinding
 import com.torx.torxplayer.services.OverlayPipManager
 import com.torx.torxplayer.services.OverlayPlaybackController
+import com.torx.torxplayer.services.PlaybackQueue
 import com.torx.torxplayer.services.VideoCache
+import com.torx.torxplayer.utils.AppGlobals
 import com.torx.torxplayer.viewmodel.FilesViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,9 +54,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
-class VideoPlayerFragment : Fragment() {
+class VideoPlayerActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityVideoPlayerBinding
 
-    private val args: VideoPlayerFragmentArgs by navArgs()
     private var playbackPosition = 0L
     private var exoPlayer: ExoPlayer? = null
     var mOrientationListener: OrientationEventListener? = null
@@ -72,7 +75,7 @@ class VideoPlayerFragment : Fragment() {
     private lateinit var soundValue: TextView
     private lateinit var tvCurrentTime: TextView
     private lateinit var tvTotalTime: TextView
-    private lateinit var binding: FragmentVideoPlayerBinding
+    private lateinit var pipMode: ImageView
 
     private lateinit var viewModel: FilesViewModel
     private var brightness: Float = 50F
@@ -90,29 +93,35 @@ class VideoPlayerFragment : Fragment() {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        binding = FragmentVideoPlayerBinding.inflate(inflater, container, false)
-        requireActivity().findViewById<BottomNavigationView>(R.id.bottomNavView)?.visibility = View.GONE
+    private val appGlobals = AppGlobals()
 
-        videoList = args.videoUriList.map { it.toUri() }
-        videoPathList = args.videoPrivatePathList.toList()
-        videoTitleList = args.videoTitle.toList()
-        currentIndex = args.position
+    private fun isRestoringFromOverlay(): Boolean {
+        return OverlayPipManager.isFromOverlay && OverlayPipManager.sharedPlayer != null
+    }
 
-        // cache for overlay restore
-        VideoCache.videoList = videoList
-        VideoCache.videoPathList = videoPathList
-        VideoCache.videoTitleList = videoTitleList
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        binding = ActivityVideoPlayerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+
+        currentIndex = PlaybackQueue.currentIndex
+        Log.e("position1", currentIndex.toString())
+        Log.e("video list", videoList.toString())
+        for (video in videoList) {
+            Log.e("video uri", video.toString())
+        }
 
 
-        val app = requireActivity().application
+        val app = application
 
         viewModel = ViewModelProvider(
-            requireActivity(),
+            this,
             ViewModelProvider.AndroidViewModelFactory.getInstance(app)
         )[FilesViewModel::class.java]
 
@@ -120,19 +129,34 @@ class VideoPlayerFragment : Fragment() {
         seekBar = binding.player.findViewById(R.id.seekBar)
         tvCurrentTime = binding.player.findViewById(R.id.tvCurrentTime)
         tvTotalTime = binding.player.findViewById(R.id.tvTotalTime)
-        audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         seekBarVolume = binding.player.findViewById(R.id.seekBarVolume)
         seekBarBrightness = binding.player.findViewById(R.id.seekBarBrightness)
         volumeLayout = binding.player.findViewById(R.id.volumeLayout)
         brightnessLayout = binding.player.findViewById(R.id.brightnessLayout)
         brightnessValue = binding.player.findViewById(R.id.brightnessValue)    // TextView showing "50%"
         soundValue = binding.player.findViewById(R.id.soundValue)
+        pipMode = binding.player.findViewById(R.id.imageViewPIP)
+
+
+        initializePlayerComponents()
 
         setFullScreen()
         setLockScreen()
-        preparePlayer()
+        if (isRestoringFromOverlay()) {
+            exoPlayer = OverlayPipManager.sharedPlayer
+            binding.player.player = exoPlayer
 
-        addBackForward()
+            updateTitleFromQueue()
+            startSeekbarUpdater()
+
+            OverlayPipManager.isFromOverlay = false
+        } else {
+            preparePlayer()
+        }
+
+
+//        addBackForward()
         setOrientation()
         initRotationLockButton()
 
@@ -142,74 +166,111 @@ class VideoPlayerFragment : Fragment() {
             playPauseVideo()
         }
 
-        // go back on system back press
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
+
+        performBackPress()
+
+        pipMode.setOnClickListener {
+
+            if (!hasOverlayPermission()) {
+                dialogToAskOverlayPermission()
+                return@setOnClickListener
+            } else {
+                // Detach PlayerView
+                attachPlayerSafely(exoPlayer!!)
+
+                // Save overlay restore state
+                OverlayPipManager.sharedPlayer = exoPlayer
+                OverlayPipManager.lastPosition = exoPlayer!!.currentPosition
+                OverlayPipManager.isFromOverlay = true
+
+                // Start overlay ONCE
+                OverlayPipManager.start(applicationContext, exoPlayer!!)
+
+                stopSeekbarUpdater()
+                finish()
+            }
+        }
+
+
+    }
+
+    private fun attachPlayerSafely(player: ExoPlayer) {
+        binding.player.player = null
+        binding.player.onPause()
+        binding.player.player = player
+        binding.player.onResume()
+    }
+
+    private fun performBackPress() {
+
+        onBackPressedDispatcher.addCallback(
+            this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     if (isLock) return
 
-                    // Detach PlayerView
-                    binding.player.player = null
+                    // Stop & clean player
+                    exoPlayer?.apply {
+                        stop()
+                        clearMediaItems()
+                    }
 
-                    // Save overlay restore state
-                    OverlayPipManager.lastPosition = exoPlayer!!.currentPosition
-                    OverlayPipManager.restoreIndex = currentIndex
-                    OverlayPipManager.sharedPlayer = exoPlayer
-                    OverlayPipManager.isFromOverlay = true
+                    OverlayPipManager.sharedPlayer = null
+                    OverlayPipManager.isFromOverlay = false
+                    OverlayPipManager.lastPosition = 0L
+                    PlaybackQueue.currentIndex = -1
 
-                    // Start overlay ONCE
-                    OverlayPipManager.start(requireContext(), exoPlayer!!)
+                    if (isTaskRoot) {
+                        // 🔥 Player is root (opened from PiP)
+                        val intent = Intent(
+                            this@VideoPlayerActivity,
+                            MainActivity::class.java
+                        ).apply {
+                            addFlags(
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            )
+                        }
+                        startActivity(intent)
+                    }
 
-                    stopSeekbarUpdater()
-
-                    // Navigate back
-                    findNavController().navigateUp()
+                    finish()
                 }
             }
         )
-
-
-        return binding.root
     }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        if (OverlayPipManager.isFromOverlay &&
-            OverlayPipManager.restoreIndex != -1
-        ) {
-            // 🔥 Overlay restore path
-            videoList = VideoCache.videoList
-            videoPathList = VideoCache.videoPathList
-            videoTitleList = VideoCache.videoTitleList
-            currentIndex = OverlayPipManager.restoreIndex
-        } else {
-            // 🔥 Normal SafeArgs path
-            val args = VideoPlayerFragmentArgs.fromBundle(requireArguments())
-
-            videoList = args.videoUriList.map { it.toUri() }
-            videoPathList = args.videoPrivatePathList.toList()
-            videoTitleList = args.videoTitle.toList()
-            currentIndex = args.position
-
-            // Cache for overlay restore
-            VideoCache.videoList = videoList
-            VideoCache.videoPathList = videoPathList
-            VideoCache.videoTitleList = videoTitleList
-        }
-    }
-
-
 
     @OptIn(UnstableApi::class)
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    private fun initializePlayerComponents(){
         binding.player.findViewById<TextView>(R.id.setPlayBackSpeed).setOnClickListener {
             speedPlayBack(it)
         }
 //        OverlayPipManagerVideoCache.videoList = videoList
 
+        if (OverlayPipManager.isFromOverlay &&
+            OverlayPipManager.restoreIndex != -1
+        ) {
+            Log.e("what is here", "restore $currentIndex")
+            // Overlay restore path
+            videoList = VideoCache.videoList
+            videoPathList = VideoCache.videoPathList
+            videoTitleList = VideoCache.videoTitleList
+            currentIndex = OverlayPipManager.restoreIndex
+        } else {
+
+            videoList = PlaybackQueue.videos.map { it.contentUri.toUri() }
+            videoTitleList = PlaybackQueue.videos.map { it.title }
+            videoPathList = PlaybackQueue.videos.map { it.privatePath ?: ""}
+            require(PlaybackQueue.isValid()) {
+                "PlaybackQueue is invalid"
+            }
+
+            // 🔥 NEVER read index from intent
+            currentIndex = PlaybackQueue.currentIndex
+
+
+//            appGlobals.getValueInt("video_position")
+        }
 
         var ratioMode = 0
 
@@ -271,7 +332,7 @@ class VideoPlayerFragment : Fragment() {
         }
 
         binding.player.findViewById<ImageView>(R.id.btnBackward).setOnClickListener {
-            if (args.isPublic) {
+            if (appGlobals.getValueBoolean("is_public")) {
                 val prevIndex = if (currentIndex - 1 < 0) videoList.size - 1 else currentIndex - 1
                 playVideoAt(prevIndex)
             } else {
@@ -281,7 +342,7 @@ class VideoPlayerFragment : Fragment() {
         }
 
         binding.player.findViewById<ImageView>(R.id.imageViewForward).setOnClickListener {
-            if (args.isPublic) {
+            if (appGlobals.getValueBoolean("is_public")) {
                 val nextIndex = (currentIndex + 1) % videoList.size
                 playVideoAt(nextIndex)
             } else {
@@ -291,7 +352,7 @@ class VideoPlayerFragment : Fragment() {
         }
 
         binding.player.findViewById<ImageView>(R.id.imageViewVolume).setOnClickListener {
-            val audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val audioManager = this.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             audioManager.adjustVolume(AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI)
         }
 
@@ -318,7 +379,6 @@ class VideoPlayerFragment : Fragment() {
             handler.removeCallbacks(hideBrightnessRunnable)
             handler.postDelayed(hideBrightnessRunnable, 3500) // 3.5 seconds
         }
-
     }
 
     private fun showSkipAnimation(text: String) {
@@ -331,11 +391,12 @@ class VideoPlayerFragment : Fragment() {
     @OptIn(UnstableApi::class)
     private fun preparePlayer() {
 
+        Log.e("curent index", currentIndex.toString())
         binding.player.findViewById<TextView>(R.id.titleText).text =
             videoTitleList.getOrNull(currentIndex) ?: "Untitled"
 
         // TrackSelector (NO resolution limits)
-        val trackSelector = DefaultTrackSelector(requireContext()).apply {
+        val trackSelector = DefaultTrackSelector(this).apply {
             setParameters(
                 buildUponParameters()
                     .setForceHighestSupportedBitrate(true)
@@ -343,37 +404,41 @@ class VideoPlayerFragment : Fragment() {
         }
 
         // Renderer with decoder fallback (VERY IMPORTANT)
-        val renderersFactory = DefaultRenderersFactory(requireContext())
+        val renderersFactory = DefaultRenderersFactory(this)
             .setEnableDecoderFallback(true)
 
         // Build ExoPlayer
-        exoPlayer = ExoPlayer.Builder(requireContext())
-            .setTrackSelector(trackSelector)
-            .setRenderersFactory(renderersFactory)
-            .setSeekBackIncrementMs(INCREMENT_MILLIS)
-            .setSeekForwardIncrementMs(INCREMENT_MILLIS)
-            .build()
+        if (exoPlayer == null) {
+            exoPlayer = ExoPlayer.Builder(this)
+                .setTrackSelector(trackSelector)
+                .setRenderersFactory(renderersFactory)
+                .setSeekBackIncrementMs(INCREMENT_MILLIS)
+                .setSeekForwardIncrementMs(INCREMENT_MILLIS)
+                .build()
+        }
 
-//        (requireActivity() as MainActivity).attachPlayer(exoPlayer)
+//        (this as MainActivity).attachPlayer(exoPlayer)
 
         exoPlayer?.playWhenReady = true
         binding.player.player = exoPlayer
 
-        // MediaItem handling (Public + Private)
-        val mediaItem = if (args.isPublic) {
-            // Public MediaStore video
-            MediaItem.fromUri(args.videoUri.toUri())
+
+        val video = PlaybackQueue.current()
+
+        val mediaItem = if (appGlobals.getValueBoolean("is_public")) {
+            MediaItem.fromUri(video.contentUri.toUri())
         } else {
-            // Private internal storage file
-            val file = File(args.videoPrivate)
-            require(file.exists()) { "Private video file missing" }
+            binding.player.findViewById<ImageView>(R.id.imageViewPIP).visibility = View.GONE
+            val file = File(video.privatePath!!)
             MediaItem.fromUri(file.toUri())
         }
 
         exoPlayer?.apply {
+            stop()
+            clearMediaItems()
             setMediaItem(mediaItem)
-            seekTo(playbackPosition)
             prepare()
+            play()
         }
 
         // Detect if video is actually 4K
@@ -383,8 +448,6 @@ class VideoPlayerFragment : Fragment() {
             }
         }
 
-//        OverlayPlaybackController.videoList = videoList
-//        OverlayPlaybackController.currentIndex = currentIndex
         OverlayPlaybackController.attachPlayer(exoPlayer!!)
 
         // Player Listener
@@ -401,37 +464,8 @@ class VideoPlayerFragment : Fragment() {
             }
 
             override fun onPlaybackStateChanged(state: Int) {
-//                when (state) {
-//                    Player.STATE_ENDED -> {
-////                        isVideoStopped = true
-//                        // Play next video automatically
-//                        val nextIndex = (currentIndex + 1) % videoList.size
-//                        if (nextIndex != 0 || args.isPublic) { // optional: check if only list should play
-//                            if (nextIndex != 0 || args.isPublic) {
-//                                playVideoAt(nextIndex)
-//                            } else {
-//                                isVideoStopped = true
-//                            }
-////                        exoPlayer!!.seekTo(0)
-////                        exoPlayer!!.play()
-////                        binding.player.findViewById<ImageView>(R.id.exo_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
-//                        }
-//                    }
-//
-//                        Player.STATE_READY -> {
-//                            isVideoStopped = false
-//                        }
-//                        Player.STATE_BUFFERING -> {
-//
-//                        }
-//                        Player.STATE_IDLE -> {
-//
-//                        }
-//                        Player.STATE_READY -> isVideoStopped = false
-//
-//                }
-                if (state == Player.STATE_ENDED && videoList.size > 1) {
-                    playVideoAt((currentIndex + 1) % videoList.size)
+                if (state == Player.STATE_ENDED && !OverlayPipManager.isFromOverlay) {
+                    playVideoAt(PlaybackQueue.nextIndex())
                 }
             }
 
@@ -442,7 +476,7 @@ class VideoPlayerFragment : Fragment() {
 
         // Brightness & volume setup (unchanged)
         brightness =
-            (requireActivity().window.attributes.screenBrightness * 100)
+            (this.window.attributes.screenBrightness * 100)
                 .toInt()
                 .coerceIn(0, 100)
                 .toFloat()
@@ -466,9 +500,17 @@ class VideoPlayerFragment : Fragment() {
         })
     }
 
+    private fun updateTitleFromQueue() {
+        val index = PlaybackQueue.currentIndex
+        if (index in videoTitleList.indices) {
+            binding.player.findViewById<TextView>(R.id.titleText).text =
+                videoTitleList[index]
+        }
+    }
+
     private fun startSeekbarUpdater() {
         seekJob?.cancel()
-        seekJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main.immediate) {
+        seekJob = lifecycleScope.launch(Dispatchers.Main.immediate) {
             while (isActive) {
                 exoPlayer?.let { p ->
                     val dur = p.duration.takeIf { it > 0 } ?: 0
@@ -495,26 +537,10 @@ class VideoPlayerFragment : Fragment() {
         return String.format("%02d:%02d", minutes, seconds)
     }
 
-    private fun addBackForward() {
-//        binding.player.findViewById<ImageView>(R.id.custom_rew).setOnClickListener {
-//            exoPlayer?.let {
-//                val newPosition = (it.currentPosition - 10_000).coerceAtLeast(0L) // rewind 10 seconds
-//                it.seekTo(newPosition)
-//            }
-//        }
-//
-//        binding.player.findViewById<ImageView>(R.id.custom_ffwd).setOnClickListener {
-//            exoPlayer?.let {
-//                val duration = it.duration
-//                val newPosition = (it.currentPosition + 10_000).coerceAtMost(duration)
-//                it.seekTo(newPosition)
-//            }
-//        }
 
-    }
     private fun setOrientation() {
         mOrientationListener = object : OrientationEventListener(
-            requireContext(),
+            this,
             SensorManager.SENSOR_DELAY_NORMAL
         ) {
             override fun onOrientationChanged(orientation: Int) {
@@ -523,15 +549,15 @@ class VideoPlayerFragment : Fragment() {
 
                 when (orientation) {
                     in 1..89 -> {
-                        requireActivity().requestedOrientation =
+                        requestedOrientation =
                             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                     }
                     in 180..360 -> {
-                        requireActivity().requestedOrientation =
+                        requestedOrientation =
                             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                     }
                     in 90..180 -> {
-                        requireActivity().requestedOrientation =
+                        requestedOrientation =
                             ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
                     }
                 }
@@ -552,10 +578,10 @@ class VideoPlayerFragment : Fragment() {
                 val currentOrientation = resources.configuration.orientation
 
                 if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    requireActivity().requestedOrientation =
+                    requestedOrientation =
                         ActivityInfo.SCREEN_ORIENTATION_LOCKED
                 } else {
-                    requireActivity().requestedOrientation =
+                    requestedOrientation =
                         ActivityInfo.SCREEN_ORIENTATION_LOCKED
                 }
 
@@ -563,7 +589,7 @@ class VideoPlayerFragment : Fragment() {
 
             } else {
                 //  Unlock orientation (follow sensors)
-                requireActivity().requestedOrientation =
+                requestedOrientation =
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR
 
                 btnRotateLock.setImageResource(R.drawable.baseline_screen_rotation_24)
@@ -590,14 +616,14 @@ class VideoPlayerFragment : Fragment() {
             if (!isLock) {
                 binding.player.findViewById<ImageView>(R.id.imageViewLock).setImageDrawable(
                     ContextCompat.getDrawable(
-                        requireContext(),
+                        this,
                         R.drawable.baseline_lock_outline_24
                     )
                 )
             } else {
                 binding.player.findViewById<ImageView>(R.id.imageViewLock).setImageDrawable(
                     ContextCompat.getDrawable(
-                        requireContext(),
+                        this,
                         R.drawable.baseline_lock_open_24
                     )
                 )
@@ -608,7 +634,9 @@ class VideoPlayerFragment : Fragment() {
 
         // go back with cancel button press
         binding.player.findViewById<ImageView>(R.id.closePlayer).setOnClickListener {
-            findNavController().navigateUp()
+//            findNavController().navigateUp()
+
+            performBackPress()
         }
     }
 
@@ -619,16 +647,16 @@ class VideoPlayerFragment : Fragment() {
             if (!isFullScreen) {
                 binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).setImageDrawable(
                     ContextCompat.getDrawable(
-                        requireContext(),
+                        this,
                         R.drawable.outline_fullscreen_exit_24
                     )
                 )
-                requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
             } else {
                 binding.player.findViewById<ImageView>(R.id.imageViewFullScreen).setImageDrawable(
-                    ContextCompat.getDrawable(requireContext(), R.drawable.baseline_fullscreen_24))
-                requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    ContextCompat.getDrawable(this, R.drawable.baseline_fullscreen_24))
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
             }
             isFullScreen = !isFullScreen
@@ -636,80 +664,68 @@ class VideoPlayerFragment : Fragment() {
     }
 
     private fun playPauseVideo() {
-        if (isVideoStopped) {
-            exoPlayer?.seekTo(0)
-            exoPlayer?.play()
-            isVideoStopped = false
-            binding.player.findViewById<ImageView>(R.id.custom_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
 
+        if (needsPrepare) {
+            val index = PlaybackQueue.currentIndex
+            if (index in videoList.indices) {
+                playVideoAt(index, lastSavedPosition)
+                needsPrepare = false
+                lastSavedPosition = 0L
+            }
             return
         }
 
         if (exoPlayer?.isPlaying == true) {
-            binding.player.findViewById<ImageView>(R.id.custom_play).setImageResource(R.drawable.baseline_play_arrow_24)
             exoPlayer?.pause()
-
+            binding.player.findViewById<ImageView>(R.id.custom_play)
+                .setImageResource(R.drawable.baseline_play_arrow_24)
         } else {
-            binding.player.findViewById<ImageView>(R.id.custom_play).setImageResource(R.drawable.baseline_pause_circle_filled_24)
             exoPlayer?.play()
+            binding.player.findViewById<ImageView>(R.id.custom_play)
+                .setImageResource(R.drawable.baseline_pause_circle_filled_24)
         }
     }
 
-    private fun playVideoAt(index: Int) {
 
-        if (index < 0) return
+    private fun playVideoAt(index: Int, restorePosition: Long = 0L) {
 
+        if (index !in videoList.indices) return
+
+        PlaybackQueue.currentIndex = index
         currentIndex = index
 
-        val mediaItem: MediaItem
-        val videoTitle: String
-
-        if (args.isPublic) {
-            // ---------- PUBLIC VIDEO ----------
-            if (index >= videoList.size) return
-
-            val videoUri = videoList[currentIndex] // content:// uri
-            viewModel.updateVideoIsHistory(videoUri.toString(), true)
-
-            mediaItem = MediaItem.fromUri(videoUri)
-            videoTitle = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
-
+        val mediaItem = if (appGlobals.getValueBoolean("is_public")) {
+            MediaItem.fromUri(videoList[index])
         } else {
-            // ---------- PRIVATE VIDEO ----------
-            if (index >= videoPathList.size) return
-
-            val path = videoPathList[currentIndex]
-            val file = File(path)
-
-            if (!file.exists()) {
-                // Defensive: file missing → stop
-                return
-            }
-
-            mediaItem = MediaItem.fromUri(file.toUri())
-            videoTitle = videoTitleList.getOrNull(currentIndex) ?: "Untitled"
+            MediaItem.fromUri(File(videoPathList[index]).toUri())
         }
 
         exoPlayer?.apply {
+            stop()
+            clearMediaItems()
             setMediaItem(mediaItem)
-            seekTo(0)
-            playWhenReady = true
             prepare()
+
+            if (restorePosition > 0) {
+                seekTo(restorePosition)
+            }
+
+            play()
         }
 
-        binding.player
-            .findViewById<TextView>(R.id.titleText)
-            .text = videoTitle
+        binding.player.findViewById<TextView>(R.id.titleText).text =
+            videoTitleList.getOrNull(index) ?: "Untitled"
     }
 
+
     private fun setBrightness(value: Int) {
-        val lp = requireActivity().window.attributes
+        val lp = window.attributes
         lp.screenBrightness = value / 100f // 0..1
-        requireActivity().window.attributes = lp
+        window.attributes = lp
     }
 
     private fun speedPlayBack(view: View) {
-        val popupMenu = PopupMenu(requireContext(), view)
+        val popupMenu = PopupMenu(this, view)
         popupMenu.inflate(R.menu.playback_speed)
 
         popupMenu.setOnMenuItemClickListener { item ->
@@ -745,90 +761,53 @@ class VideoPlayerFragment : Fragment() {
         popupMenu.show()
     }
 
-    private var pipClosedByUser = false
-
-//    override fun onPictureInPictureModeChanged(isInPip: Boolean) {
-//        super.onPictureInPictureModeChanged(isInPip)
-//        Log.e("PIP", "ENTERED = $isInPip")
-//
-//        binding.player.useController = !isInPip
-//
-//        if (isInPip) {
-//            hideControls()
-//        } else {
-//            showControls()
-//
-//            // Force resume playback
-//            exoPlayer?.let {
-//                if (!it.isPlaying && it.playbackState == Player.STATE_READY) {
-//                    it.play()
-//                }
-//            }
-//        }
-//    }
-
-
-    private fun hideControls() {
-        binding.player.findViewById<ImageView>(R.id.closePlayer).visibility = View.GONE
-        binding.player.findViewById<TextView>(R.id.titleText).visibility = View.GONE
-
-        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlUp).visibility = View.GONE
-        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.GONE
-
-        binding.player.findViewById<LinearLayout>(R.id.brightnessLayout).visibility = View.GONE
-        binding.player.findViewById<LinearLayout>(R.id.volumeLayout).visibility = View.GONE
-        binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.GONE
-        binding.player.findViewById<ImageView>(R.id.imageViewLock).visibility = View.GONE
+    fun requestOverlayPermission() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        )
+        startActivity(intent)
     }
 
-    private fun showControls() {
-        binding.player.findViewById<ImageView>(R.id.closePlayer).visibility = View.VISIBLE
-        binding.player.findViewById<TextView>(R.id.titleText).visibility = View.VISIBLE
-
-        binding.player.findViewById<LinearLayout>(R.id.linearLayoutControlBottom).visibility = View.VISIBLE
-        Log.e("PIP", "SHOW CONTROLS")
-        binding.player.findViewById<LinearLayout>(R.id.ffbLayout).visibility = View.VISIBLE
-        binding.player.findViewById<ImageView>(R.id.imageViewLock).visibility = View.VISIBLE
+    fun hasOverlayPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(this)
+        } else true
     }
+
+    private fun dialogToAskOverlayPermission() {
+        val dialog = AlertDialog.Builder(this)
+        .setTitle("Enable PIP Mode")
+    .setMessage("${getString(R.string.app_name)} needs Draw/Display over other apps permission to play the videos on the top of other apps.")
+        .setPositiveButton("Grant Permission") { _, _ ->
+            requestOverlayPermission()
+        }
+        .setNegativeButton("Cancel") { dialog, _ ->
+            dialog.dismiss()
+        }
+        .create()
+        dialog.show()
+    }
+
+    private var needsPrepare = false
+    private var lastSavedPosition: Long = 0L
+
 
     override fun onStop() {
         super.onStop()
 
         stopSeekbarUpdater()
+
+        if (!OverlayPipManager.isFromOverlay) {
+            lastSavedPosition = exoPlayer?.currentPosition ?: 0L
+
+            exoPlayer?.apply {
+                stop()
+                clearMediaItems()
+            }
+            needsPrepare = true
+        }
     }
-
-//    // new buttons
-//    fun togglePlayPauseFromPip() {
-//        exoPlayer?.let {
-//            if (it.isPlaying) it.pause() else it.play()
-//        }
-//    }
-//
-//    fun playNextFromPip() {
-//        val nextIndex = (currentIndex + 1) % videoList.size
-//        playVideoAt(nextIndex)
-//    }
-//
-//    fun playPreviousFromPip() {
-//        val prevIndex =
-//            if (currentIndex - 1 < 0) videoList.size -1 else currentIndex - 1
-//        playVideoAt(prevIndex)
-//    }
-
-    fun togglePlayPauseFromPip() {
-        OverlayPlaybackController.togglePlayPause()
-    }
-
-    fun playNextFromPip() {
-        OverlayPlaybackController.playNext()
-    }
-
-    fun playPreviousFromPip() {
-        OverlayPlaybackController.playPrevious()
-    }
-
-
-    /////////////////
 
     override fun onDestroy() {
         super.onDestroy()
@@ -840,35 +819,11 @@ class VideoPlayerFragment : Fragment() {
         stopSeekbarUpdater()
     }
 
-    private var playWhenReady = true
-
-    private fun releasePlayer() {
-        exoPlayer?.let { player ->
-
-            // Save playback state
-            playbackPosition = player.currentPosition
-            playWhenReady = player.playWhenReady
-
-            // Detach from PlayerView (IMPORTANT)
-            binding.player.player = null
-
-            // Release player
-            player.release()
-        }
-
-        exoPlayer = null
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        stopSeekbarUpdater()
-    }
-
     override fun onResume() {
         super.onResume()
 
         // Stop overlay UI only (player remains)
-        OverlayPipManager.stop(requireContext())
+        OverlayPipManager.stop(this)
 
         val player = OverlayPlaybackController.player
         if (player != null) {
@@ -881,21 +836,10 @@ class VideoPlayerFragment : Fragment() {
         OverlayPipManager.isFromOverlay = false
     }
 
-
-
-    private fun ensurePlayback() {
-        exoPlayer?.let {
-            if (!it.isPlaying && it.playbackState == Player.STATE_READY) {
-                it.play()
-            }
-        }
-    }
-
     companion object {
         private var isFullScreen = false
         private var isLock = false
         private var isVideoStopped = false
         private const val INCREMENT_MILLIS = 5000L
     }
-
 }
