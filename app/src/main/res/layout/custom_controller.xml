@@ -192,7 +192,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:progressDrawable="@drawable/custom_seekbar"
+                android:progressTint="@color/white"
                 android:thumbTint="@color/white"
                 android:thumb="@drawable/seekbar_thumb" />
 

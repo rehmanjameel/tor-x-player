@@ -1237,6 +1237,7 @@ class VideosFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        setVideoRvTop(R.id.customTabs)
         setupRecyclerView()
         if (hasVideoPermission(requireContext())) {
             loadMediaFilesIntoDB()
