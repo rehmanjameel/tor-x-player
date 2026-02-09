@@ -28,16 +28,17 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TorXplayer">
+
         <activity
             android:name=".VideoPlayerActivity"
             android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="true"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
             android:windowOptOutEdgeToEdgeEnforcement="true"
             android:windowSoftInputMode="adjustNothing"
             tools:targetApi="35">
