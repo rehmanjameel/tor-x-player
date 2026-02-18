@@ -170,6 +170,7 @@ class VideosFragment : Fragment() {
                 OverlayPipManager.sharedPlayer = null
                 OverlayPipManager.isFromOverlay = false
                 OverlayPipManager.lastPosition = 0L
+                appGlobal.saveLoginOrBoolean("is_public", true)
 
                 // THEN: open player
                 val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
@@ -213,6 +214,7 @@ class VideosFragment : Fragment() {
                     OverlayPipManager.isFromOverlay = false
                     OverlayPipManager.lastPosition = 0L
 
+                    appGlobal.saveLoginOrBoolean("is_public", true)
                     // THEN: open player
                     val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
                     startActivity(intent)
@@ -266,6 +268,7 @@ class VideosFragment : Fragment() {
                     OverlayPipManager.sharedPlayer = null
                     OverlayPipManager.isFromOverlay = false
                     OverlayPipManager.lastPosition = 0L
+                    appGlobal.saveLoginOrBoolean("is_public", true)
 
                     // THEN: open player
                     val intent = Intent(requireContext(), VideoPlayerActivity::class.java)
@@ -1120,12 +1123,23 @@ class VideosFragment : Fragment() {
     private fun loadMediaFilesIntoDB() {
         lifecycleScope.launch {
             binding.progressBar.visibility = View.VISIBLE
+
             val fetched = withContext(Dispatchers.IO) { fetchMediaFiles(requireContext()) }
+
             if (fetched.isNotEmpty()) {
+
                 viewModel.insertAllVideos(fetched)
+
+                // CLEANUP
+                val currentUris = fetched.map { it.contentUri }
+                viewModel.cleanupDeletedVideos(currentUris)
+
                 binding.videoRV.visibility = View.VISIBLE
                 binding.emptyView.visibility = View.GONE
-            } else binding.emptyView.visibility = View.VISIBLE
+            } else {
+                binding.emptyView.visibility = View.VISIBLE
+            }
+
             binding.progressBar.visibility = View.GONE
         }
     }

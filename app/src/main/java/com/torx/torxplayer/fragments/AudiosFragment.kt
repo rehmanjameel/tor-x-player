@@ -1115,6 +1115,10 @@ class AudiosFragment : Fragment() {
             if (fetchedAudios.isNotEmpty()) {
                 viewModel.insertAllAudios(fetchedAudios)
 
+                // CLEANUP
+                val currentUris = fetchedAudios.map { it.uri }
+                viewModel.cleanupDeletedAudios(currentUris)
+
                 binding.progressBar.visibility = View.GONE
                 binding.emptyView.visibility = View.GONE
                 binding.audioRV.visibility = View.VISIBLE

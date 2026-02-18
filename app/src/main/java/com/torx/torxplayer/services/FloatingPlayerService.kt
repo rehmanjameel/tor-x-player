@@ -3,8 +3,10 @@ package com.torx.torxplayer.services
 import android.app.Service
 import android.app.TaskStackBuilder
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -37,6 +39,7 @@ class FloatingPlayerService : Service() {
 
         floatingView = LayoutInflater.from(this)
             .inflate(R.layout.view_floating_player, null, false)
+        Log.e("what is here", "start onCreate")
 
         params = WindowManager.LayoutParams(
             520,
@@ -45,10 +48,11 @@ class FloatingPlayerService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                     PixelFormat.TRANSLUCENT
         )
+
+        Log.e("what is here", "start onCreate $params")
 
         params.gravity = Gravity.TOP or Gravity.START
 
@@ -82,6 +86,20 @@ class FloatingPlayerService : Service() {
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+
+                    val metrics = android.util.DisplayMetrics()
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        val bounds = windowManager.currentWindowMetrics.bounds
+                        metrics.widthPixels = bounds.width()
+                        metrics.heightPixels = bounds.height()
+                    } else {
+                        windowManager.defaultDisplay.getMetrics(metrics)
+                    }
+
+                    val screenWidth = metrics.widthPixels
+                    val screenHeight = metrics.heightPixels
+
                     val newX = initialX + (event.rawX - initialTouchX).toInt()
                     val newY = initialY + (event.rawY - initialTouchY).toInt()
 
@@ -92,17 +110,18 @@ class FloatingPlayerService : Service() {
                     true
                 }
 
+
                 else -> false
             }
         }
 
-        playerView.player = OverlayPlaybackController.player
-        OverlayPlaybackController.player?.play()
+        playerView.player = OverlayPipManager.sharedPlayer
+        OverlayPipManager.sharedPlayer?.play()
 
         // ❌ close
         floatingView.findViewById<ImageView>(R.id.btnClose).setOnClickListener {
-            OverlayPlaybackController.player?.pause()
-            OverlayPlaybackController.player = null
+            OverlayPipManager.sharedPlayer?.pause()
+            OverlayPipManager.sharedPlayer = null
             stopSelf()
         }
 
@@ -111,7 +130,7 @@ class FloatingPlayerService : Service() {
 
             OverlayPipManager.isOpeningFullscreen = true
             OverlayPipManager.lastPosition =
-                OverlayPlaybackController.player?.currentPosition ?: 0L
+                OverlayPipManager.sharedPlayer?.currentPosition ?: 0L
 
             floatingView.findViewById<PlayerView>(R.id.floatingPlayerView).player = null
 
@@ -130,7 +149,7 @@ class FloatingPlayerService : Service() {
             OverlayPlaybackController.togglePlayPause()
         }
 
-        OverlayPlaybackController.player?.addListener(
+        OverlayPipManager.sharedPlayer?.addListener(
             object : Player.Listener {
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -139,14 +158,14 @@ class FloatingPlayerService : Service() {
 
                 override fun onPlaybackStateChanged(state: Int) {
                     val isPlaying =
-                        OverlayPlaybackController.player?.isPlaying == true
+                        OverlayPipManager.sharedPlayer?.isPlaying == true
                     updatePlayPauseIcon(isPlaying)
                 }
             }
         )
 
 
-        OverlayPlaybackController.player?.addListener(
+        OverlayPipManager.sharedPlayer?.addListener(
             object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) {
                     if (state == Player.STATE_ENDED) {
@@ -158,7 +177,7 @@ class FloatingPlayerService : Service() {
 
         // ▶ play / pause
         updatePlayPauseIcon(
-            OverlayPlaybackController.player?.isPlaying == true
+            OverlayPipManager.sharedPlayer?.isPlaying == true
         )
 
         // ⏭ next
@@ -197,17 +216,42 @@ class FloatingPlayerService : Service() {
         super.onDestroy()
 
         if (!OverlayPipManager.isOpeningFullscreen) {
-            // ONLY when user closes overlay
-            OverlayPlaybackController.player?.stop()
-            OverlayPlaybackController.player?.clearMediaItems()
-            OverlayPlaybackController.player = null
+            OverlayPipManager.sharedPlayer?.stop()
+            OverlayPipManager.sharedPlayer?.clearMediaItems()
+            OverlayPipManager.sharedPlayer = null
+            Log.e("what is here", "start ondestroy0")
+
         }
+        Log.e("what is here", "start ondestroy")
 
         OverlayPipManager.isOpeningFullscreen = false
-        windowManager.removeView(floatingView)
+
+        if (::floatingView.isInitialized) {
+            Log.e("what is here", "start ondestroy 1")
+            windowManager.removeView(floatingView)
+        }
     }
 
+
     override fun onBind(intent: Intent?) = null
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+
+        // Re-clamp position to new screen bounds
+        val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            windowManager.currentWindowMetrics.bounds
+        } else {
+            val metrics = resources.displayMetrics
+            android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
+        }
+
+        params.x = params.x.coerceIn(0, bounds.width() - params.width)
+        params.y = params.y.coerceIn(0, bounds.height() - params.height)
+
+        windowManager.updateViewLayout(floatingView, params)
+    }
+
 }
 
 

@@ -795,6 +795,12 @@ class VideoPlayerFragment : Fragment() {
         super.onStop()
 
         stopSeekbarUpdater()
+
+        // DO NOT destroy player on rotation
+//        if (!isChangingConfigurations && !OverlayPipManager.isFromOverlay) {
+//            exoPlayer?.release()
+//            exoPlayer = null
+//        }
     }
 
 //    // new buttons

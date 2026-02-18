@@ -41,6 +41,14 @@ class FileRepository(private val fileDao: FileDao) {
         fileDao.deleteByUri(uri)
     }
 
+    suspend fun getAllUris(): List<String> {
+        return fileDao.getAllUris()
+    }
+
+    suspend fun getAllAudioUris(): List<String> {
+        return fileDao.getAllAudioUris()
+    }
+
     suspend fun getVideoById(id: Long): VideosModel? {
         return fileDao.getVideoById(id)
     }

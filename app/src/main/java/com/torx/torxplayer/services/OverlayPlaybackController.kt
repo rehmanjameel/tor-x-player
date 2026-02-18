@@ -13,7 +13,9 @@ object OverlayPlaybackController {
     }
 
     fun togglePlayPause() {
-        player?.let { if (it.isPlaying) it.pause() else it.play() }
+        OverlayPipManager.sharedPlayer?.let {
+            if (it.isPlaying) it.pause() else it.play()
+        }
     }
 
     fun playNext() {
@@ -28,7 +30,7 @@ object OverlayPlaybackController {
         PlaybackQueue.currentIndex = index
         val video = PlaybackQueue.current()
 
-        player?.apply {
+        OverlayPipManager.sharedPlayer?.apply {
             stop()
             clearMediaItems()
             setMediaItem(MediaItem.fromUri(video.contentUri.toUri()))

@@ -71,6 +71,27 @@ class FilesViewModel(application: Application) : AndroidViewModel(application) {
         repository.deleteVideoByUri(uri)
     }
 
+    fun cleanupDeletedVideos(validUris: List<String>) = viewModelScope.launch(Dispatchers.IO) {
+        val dbUris = repository.getAllUris()
+
+        val toDelete = dbUris.filter { it !in validUris }
+
+        toDelete.forEach {
+            repository.deleteVideoByUri(it)
+        }
+    }
+
+    fun cleanupDeletedAudios(validUris: List<String>) = viewModelScope.launch(Dispatchers.IO) {
+        val dbUris = repository.getAllAudioUris()
+
+        val toDelete = dbUris.filter { it !in validUris }
+
+        toDelete.forEach {
+            repository.deleteAudioByUri(it)
+        }
+    }
+
+
     fun updateVideoIsPrivate(videoId: Long, isPrivate: Boolean, privatePath: String?) = viewModelScope.launch(Dispatchers.IO) {
         repository.updateVideoIsPrivate(videoId, isPrivate, privatePath)
     }

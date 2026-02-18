@@ -111,6 +111,12 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
 
         currentIndex = PlaybackQueue.currentIndex
+        // Restore state after rotation (portrait <-> landscape)
+        savedInstanceState?.let { bundle ->
+            lastSavedPosition = bundle.getLong(KEY_SAVED_POSITION, 0L)
+            currentIndex = bundle.getInt(KEY_CURRENT_INDEX, currentIndex)
+            needsPrepare = bundle.getBoolean(KEY_NEEDS_PREPARE, false)
+        }
         Log.e("position1", currentIndex.toString())
         Log.e("video list", videoList.toString())
         for (video in videoList) {
@@ -153,6 +159,8 @@ class VideoPlayerActivity : AppCompatActivity() {
             OverlayPipManager.isFromOverlay = false
         } else {
             preparePlayer()
+            // After restore from rotation, player is ready (don't trigger needsPrepare path)
+            if (savedInstanceState != null) needsPrepare = false
         }
 
 
@@ -183,6 +191,10 @@ class VideoPlayerActivity : AppCompatActivity() {
                 OverlayPipManager.lastPosition = exoPlayer!!.currentPosition
                 OverlayPipManager.isFromOverlay = true
 
+                binding.player.player = null
+                binding.player.onPause()
+
+                Log.e("what is here", "start")
                 // Start overlay ONCE
                 OverlayPipManager.start(applicationContext, exoPlayer!!)
 
@@ -207,37 +219,36 @@ class VideoPlayerActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (isLock) return
-
-                    // Stop & clean player
-                    exoPlayer?.apply {
-                        stop()
-                        clearMediaItems()
-                    }
-
-                    OverlayPipManager.sharedPlayer = null
-                    OverlayPipManager.isFromOverlay = false
-                    OverlayPipManager.lastPosition = 0L
-                    PlaybackQueue.currentIndex = -1
-
-                    if (isTaskRoot) {
-                        // 🔥 Player is root (opened from PiP)
-                        val intent = Intent(
-                            this@VideoPlayerActivity,
-                            MainActivity::class.java
-                        ).apply {
-                            addFlags(
-                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                        Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            )
-                        }
-                        startActivity(intent)
-                    }
-
-                    finish()
+                    handleExit()
                 }
             }
         )
+    }
+
+    private fun handleExit() {
+        if (isLock) return
+
+        exoPlayer?.apply {
+            stop()
+            clearMediaItems()
+        }
+
+        OverlayPipManager.sharedPlayer = null
+        OverlayPipManager.isFromOverlay = false
+        OverlayPipManager.lastPosition = 0L
+        PlaybackQueue.currentIndex = -1
+
+        if (isTaskRoot) {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                )
+            }
+            startActivity(intent)
+        }
+
+        finish()
     }
 
     @OptIn(UnstableApi::class)
@@ -438,6 +449,10 @@ class VideoPlayerActivity : AppCompatActivity() {
             clearMediaItems()
             setMediaItem(mediaItem)
             prepare()
+            if (lastSavedPosition > 0) {
+                seekTo(lastSavedPosition)
+                lastSavedPosition = 0L
+            }
             play()
         }
 
@@ -509,7 +524,9 @@ class VideoPlayerActivity : AppCompatActivity() {
     }
 
     private fun startSeekbarUpdater() {
+        Log.e("what is here", "resume seekbar started 1")
         seekJob?.cancel()
+        Log.e("what is here", "resume seekbar started 2")
         seekJob = lifecycleScope.launch(Dispatchers.Main.immediate) {
             while (isActive) {
                 exoPlayer?.let { p ->
@@ -636,7 +653,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         binding.player.findViewById<ImageView>(R.id.closePlayer).setOnClickListener {
 //            findNavController().navigateUp()
 
-            performBackPress()
+            handleExit()
         }
     }
 
@@ -825,18 +842,32 @@ class VideoPlayerActivity : AppCompatActivity() {
         // Stop overlay UI only (player remains)
         OverlayPipManager.stop(this)
 
-        val player = OverlayPlaybackController.player
+        val player = OverlayPipManager.sharedPlayer
         if (player != null) {
+            exoPlayer = player   // 🔥 VERY IMPORTANT
             binding.player.player = player
             player.seekTo(OverlayPipManager.lastPosition)
             player.play()
+            Log.e("what is here", "resume seekbar started")
             startSeekbarUpdater()
         }
 
         OverlayPipManager.isFromOverlay = false
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Save playback position for restoration on rotation (portrait <-> landscape)
+        val position = exoPlayer?.currentPosition ?: lastSavedPosition
+        outState.putLong(KEY_SAVED_POSITION, position)
+        outState.putInt(KEY_CURRENT_INDEX, currentIndex)
+        outState.putBoolean(KEY_NEEDS_PREPARE, needsPrepare)
+    }
+
     companion object {
+        private const val KEY_SAVED_POSITION = "saved_playback_position"
+        private const val KEY_CURRENT_INDEX = "current_index"
+        private const val KEY_NEEDS_PREPARE = "needs_prepare"
         private var isFullScreen = false
         private var isLock = false
         private var isVideoStopped = false

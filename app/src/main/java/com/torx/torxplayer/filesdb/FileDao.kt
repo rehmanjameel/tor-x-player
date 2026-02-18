@@ -20,6 +20,12 @@ interface FileDao {
     @Query("Select * From video Order by date_added DESC")
     fun getAllVideos(): LiveData<MutableList<VideosModel>>
 
+    @Query("SELECT content_uri FROM video")
+    suspend fun getAllUris(): List<String>
+
+    @Query("SELECT uri FROM audio")
+    suspend fun getAllAudioUris(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertVideo(video: VideosModel)
 

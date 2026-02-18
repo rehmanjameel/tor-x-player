@@ -63,6 +63,7 @@
         <service
             android:name=".services.FloatingPlayerService"
             android:exported="false"
+            android:configChanges="orientation|screenSize"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
     </application>
 
