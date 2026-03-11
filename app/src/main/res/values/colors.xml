@@ -2,6 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="off_white">#EFECEC</color>
 
     <color name="bottom_bar_bg">#121212</color>
     <color name="card_bg">#232323</color>

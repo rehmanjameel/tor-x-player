@@ -359,6 +359,7 @@ class VideosFragment : Fragment() {
                 selected.setTextColor(resources.getColor(R.color.green))
                 showSection(video = false, folder = true, selected = false, showBack = false)
                 setVideoRvTop(R.id.customTabs)
+                setupFolderAdapter()   // <-- ADD THIS LINE
                 binding.emptyView.visibility = View.GONE
                 isPlaylistView = false
                 isFolder = true

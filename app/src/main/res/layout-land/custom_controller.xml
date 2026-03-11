@@ -90,6 +90,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:progressBackgroundTint="@color/off_white"
                 android:progressTint="@color/white"
                 android:thumbTint="@color/white" />
 
@@ -103,16 +104,16 @@
         </LinearLayout>
 
         <!-- Bottom row: Lock | Speed | Aspect Ratio | Fullscreen -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:layout_marginBottom="5dp"
-            android:layout_marginStart="25dp">
+<!--        <RelativeLayout-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:padding="8dp"-->
+<!--            android:layout_marginBottom="5dp"-->
+<!--            android:layout_marginStart="25dp">-->
 
 
 
-        </RelativeLayout>
+<!--        </RelativeLayout>-->
 
     </LinearLayout>
 
